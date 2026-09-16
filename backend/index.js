@@ -23,7 +23,7 @@ app.get('/api/health', (req, res) => {
 
 // Acá vamos a ir montando las rutas a medida que las creemos
 app.use('/api/sesiones', require('./rutas/sesiones'));
-// app.use('/api/reclamos', require('./rutas/reclamos'));
+app.use('/api/reclamos', require('./rutas/reclamos'));
 
 app.listen(PORT, () => {
   console.log(`🚀 Backend escuchando en http://localhost:${PORT}`);
