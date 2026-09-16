@@ -2,6 +2,7 @@
 require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
+const path = require('path');
 
 // Importamos la DB para que se inicialice (crea las tablas)
 require('./db');
@@ -12,6 +13,8 @@ const PORT = process.env.PORT || 3000;
 // Middlewares
 app.use(cors());
 app.use(express.json());
+// Servir archivos estáticos del frontend
+app.use(express.static(path.join(__dirname, '..', 'frontend', 'public')));
 
 // Ruta de salud, para chequear que el server está vivo
 app.get('/api/health', (req, res) => {

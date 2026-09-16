@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Gestión de reclamo</title>
+  <style>
+    body {
+      font-family: system-ui, sans-serif;
+      max-width: 600px;
+      margin: 40px auto;
+      padding: 0 20px;
+      color: #222;
+    }
+    h1 { color: #128C7E; }
+    .estado {
+      padding: 16px;
+      border-radius: 8px;
+      margin-top: 20px;
+      font-weight: 500;
+    }
+    .ok { background: #d4f4dd; color: #0a5c2b; }
+    .error { background: #fde2e2; color: #8a1c1c; }
+    .cargando { background: #eef; color: #334; }
+  </style>
+</head>
+<body>
+  <h1>🌱 Gestión de reclamo</h1>
+  <div id="estado" class="estado cargando">Validando enlace...</div>
+
+  <script src="/chat.js"></script>
+</body>
+</html>
