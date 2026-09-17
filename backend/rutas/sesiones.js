@@ -76,4 +76,118 @@ router.get('/validar/:token', (req, res) => {
   res.json({ ok: true, sesion });
 });
 
+/**
+ * POST /api/sesiones/:token/avanzar
+ * Body: { estado, datos? }
+ * Actualiza el estado de conversación y agrega datos temporales.
+ */
+router.post('/:token/avanzar', (req, res) => {
+  const { token } = req.params;
+  const { estado, datos } = req.body;
+
+  if (!estado) {
+    return res.status(400).json({ ok: false, error: 'Falta el estado' });
+  }
+
+  const ahora = new Date().toISOString();
+  const sesion = db.prepare(`
+    SELECT * FROM sesiones
+    WHERE token = ? AND activa = 1 AND expira_en > ?
+  `).get(token, ahora);
+
+  if (!sesion) {
+    return res.status(404).json({ ok: false, error: 'Sesión inválida o expirada' });
+  }
+
+  // Fusionamos los datos nuevos con los temporales existentes
+  let temporales = {};
+  if (sesion.datos_temporales) {
+    try { temporales = JSON.parse(sesion.datos_temporales); } catch (e) { temporales = {}; }
+  }
+  if (datos && typeof datos === 'object') {
+    temporales = { ...temporales, ...datos };
+  }
+
+  db.prepare(`
+    UPDATE sesiones
+    SET estado_conversacion = ?,
+        datos_temporales = ?
+    WHERE id = ?
+  `).run(estado, JSON.stringify(temporales), sesion.id);
+
+  res.json({ ok: true, estado, datos_temporales: temporales });
+});
+
+/**
+ * POST /api/sesiones/:token/finalizar
+ * Crea el reclamo con los datos temporales y cierra el flujo.
+ */
+router.post('/:token/finalizar', (req, res) => {
+  const { token } = req.params;
+  const ahora = new Date().toISOString();
+
+  const sesion = db.prepare(`
+    SELECT * FROM sesiones
+    WHERE token = ? AND activa = 1 AND expira_en > ?
+  `).get(token, ahora);
+
+  if (!sesion) {
+    return res.status(404).json({ ok: false, error: 'Sesión inválida o expirada' });
+  }
+
+  // Parseamos los datos temporales
+  let datos = {};
+  if (sesion.datos_temporales) {
+    try { datos = JSON.parse(sesion.datos_temporales); } catch (e) { datos = {}; }
+  }
+
+  // Validamos lo mínimo indispensable
+  if (!datos.tipo || !datos.direccion || !datos.nombre) {
+    return res.status(400).json({
+      ok: false,
+      error: 'Faltan datos obligatorios para crear el reclamo',
+      datos,
+    });
+  }
+
+  // Actualizamos los datos del usuario
+  db.prepare(`
+    UPDATE usuarios
+    SET direccion = COALESCE(?, direccion),
+        nombre = COALESCE(?, nombre)
+    WHERE id = ?
+  `).run(datos.direccion, datos.nombre, sesion.usuario_id);
+
+  // Creamos el reclamo
+  const detalleJson = JSON.stringify({
+    foto: datos.foto || null,
+    comentarios: datos.comentarios || null,
+  });
+
+  const info = db.prepare(`
+    INSERT INTO reclamos (usuario_id, sesion_id, tipo, subtipo, detalle_json)
+    VALUES (?, ?, ?, ?, ?)
+  `).run(
+    sesion.usuario_id,
+    sesion.id,
+    datos.tipo,
+    datos.subtipo || null,
+    detalleJson
+  );
+
+  // Actualizamos la sesión: estado finalizado, limpiamos temporales
+  db.prepare(`
+    UPDATE sesiones
+    SET estado_conversacion = 'finalizado',
+        datos_temporales = NULL
+    WHERE id = ?
+  `).run(sesion.id);
+
+  const reclamo = db.prepare('SELECT * FROM reclamos WHERE id = ?').get(info.lastInsertRowid);
+
+  res.json({ ok: true, reclamo });
+});
+
+
+
 module.exports = router;
