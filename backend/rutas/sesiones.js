@@ -46,10 +46,11 @@ router.post('/desde-whatsapp', (req, res) => {
   // 4. Devolvemos los datos al bot
   const baseUrl = process.env.WEBCHAT_URL || 'http://localhost:3000';
   res.json({
-    ok: true,
-    usuario_id: usuario.id,
-    token: sesion.token,
-    url_webchat: `${baseUrl}/chat.html?token=${sesion.token}`,
+      ok: true,
+      usuario_id: usuario.id,
+      token: sesion.token,
+      estado_conversacion: sesion.estado_conversacion,
+      datos_temporales: sesion.datos_temporales,
   });
 });
 

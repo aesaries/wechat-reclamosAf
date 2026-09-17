@@ -5,28 +5,101 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Gestión de reclamo</title>
   <style>
+    * { box-sizing: border-box; }
     body {
-      font-family: system-ui, sans-serif;
+      font-family: system-ui, -apple-system, sans-serif;
       max-width: 600px;
-      margin: 40px auto;
-      padding: 0 20px;
+      margin: 0 auto;
+      padding: 20px;
       color: #222;
+      background: #f7f9f9;
     }
-    h1 { color: #128C7E; }
+    h1 { color: #128C7E; margin-bottom: 8px; font-size: 1.6rem; }
+    .subtitulo { color: #555; margin-bottom: 24px; }
     .estado {
       padding: 16px;
       border-radius: 8px;
-      margin-top: 20px;
+      margin-bottom: 20px;
       font-weight: 500;
     }
     .ok { background: #d4f4dd; color: #0a5c2b; }
     .error { background: #fde2e2; color: #8a1c1c; }
     .cargando { background: #eef; color: #334; }
+    form {
+      background: white;
+      padding: 24px;
+      border-radius: 12px;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+    }
+    label {
+      display: block;
+      margin-bottom: 6px;
+      font-weight: 500;
+      color: #333;
+    }
+    select, input, textarea {
+      width: 100%;
+      padding: 12px;
+      border: 1px solid #ccc;
+      border-radius: 8px;
+      font-size: 1rem;
+      margin-bottom: 18px;
+      font-family: inherit;
+    }
+    select:focus, input:focus, textarea:focus {
+      outline: none;
+      border-color: #128C7E;
+    }
+    button {
+      background: #128C7E;
+      color: white;
+      border: none;
+      padding: 14px 20px;
+      border-radius: 8px;
+      font-size: 1rem;
+      font-weight: 600;
+      width: 100%;
+      cursor: pointer;
+    }
+    button:disabled {
+      background: #9bb;
+      cursor: not-allowed;
+    }
+    .oculto { display: none; }
   </style>
 </head>
 <body>
   <h1>🌱 Gestión de reclamo</h1>
+  <p class="subtitulo">Completá los datos y te contactamos a la brevedad.</p>
+
   <div id="estado" class="estado cargando">Validando enlace...</div>
+
+  <form id="formReclamo" class="oculto">
+    <label for="tipo">Tipo de reclamo *</label>
+    <select id="tipo" name="tipo" required>
+      <option value="">Elegí una opción...</option>
+      <option value="residuos">Recolección de residuos</option>
+      <option value="poda">Poda</option>
+      <option value="escombros">Escombros</option>
+      <option value="otro">Otro</option>
+    </select>
+
+    <label for="subtipo">Detalle *</label>
+    <select id="subtipo" name="subtipo" required>
+      <option value="">Elegí primero el tipo...</option>
+    </select>
+
+    <label for="direccion">Dirección *</label>
+    <input type="text" id="direccion" name="direccion" required placeholder="Calle, número, barrio">
+
+    <label for="nombre">Tu nombre *</label>
+    <input type="text" id="nombre" name="nombre" required placeholder="Nombre y apellido">
+
+    <label for="detalle">Comentarios adicionales</label>
+    <textarea id="detalle" name="detalle" rows="3" placeholder="Opcional. Cualquier detalle que ayude."></textarea>
+
+    <button type="submit" id="btnEnviar">Enviar reclamo</button>
+  </form>
 
   <script src="/chat.js"></script>
 </body>

@@ -19,12 +19,14 @@ db.exec(`
     creado_en DATETIME DEFAULT CURRENT_TIMESTAMP
   );
 
-  CREATE TABLE IF NOT EXISTS sesiones (
+    CREATE TABLE IF NOT EXISTS sesiones (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     token TEXT UNIQUE NOT NULL,
     usuario_id INTEGER NOT NULL,
     activa INTEGER DEFAULT 1,
     expira_en DATETIME NOT NULL,
+    estado_conversacion TEXT DEFAULT 'inicio',
+    datos_temporales TEXT,
     creado_en DATETIME DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (usuario_id) REFERENCES usuarios(id)
   );

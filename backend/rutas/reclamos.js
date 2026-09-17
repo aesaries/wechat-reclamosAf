@@ -26,17 +26,28 @@ router.post('/', (req, res) => {
     return res.status(404).json({ ok: false, error: 'Sesión inválida o expirada' });
   }
 
-  // 2. Guardamos el reclamo
+    // 2. Actualizamos los datos del usuario si vinieron
+  const { direccion, nombre } = req.body;
+  if (direccion || nombre) {
+    db.prepare(`
+      UPDATE usuarios
+      SET direccion = COALESCE(?, direccion),
+          nombre = COALESCE(?, nombre)
+      WHERE id = ?
+    `).run(direccion || null, nombre || null, sesion.usuario_id);
+  }
+
+  // 3. Guardamos el reclamo
   const detalleJson = detalle ? JSON.stringify(detalle) : null;
   const info = db.prepare(`
     INSERT INTO reclamos (usuario_id, sesion_id, tipo, subtipo, detalle_json)
     VALUES (?, ?, ?, ?, ?)
   `).run(sesion.usuario_id, sesion.id, tipo, subtipo || null, detalleJson);
 
-  // 3. Devolvemos el reclamo creado
+// 4. Devolvemos el reclamo creado
   const reclamo = db.prepare('SELECT * FROM reclamos WHERE id = ?').get(info.lastInsertRowid);
-
   res.json({ ok: true, reclamo });
+
 });
 
 
