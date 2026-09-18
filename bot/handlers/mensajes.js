@@ -1,5 +1,12 @@
 // bot/handlers/mensajes.js
+const { downloadMediaMessage } = require('@whiskeysockets/baileys');
+const fs = require('fs');
+const path = require('path');
 
+
+const MAX_FOTOS = 3;
+const UPLOADS_DIR = path.join(__dirname, '..', '..', 'uploads');
+const RECORDATORIO_MS = 30 * 1000; // 30 segundos
 const BACKEND_URL = process.env.BACKEND_URL || 'http://localhost:3000';
 
 // ============================================================
@@ -102,21 +109,37 @@ function esFoto(msg) {
   return !!msg.message?.imageMessage;
 }
 
+/** 
+* Obtiene el jid con teléfono real, contemplando la migración a LID de WhatsApp.
+ * Prioriza el que termine en @s.whatsapp.net, y si ninguno lo hace, cae al remoteJid.
+ */
+function obtenerJidUsuario(msg) {
+  const { remoteJid, remoteJidAlt } = msg.key;
+  const esTelefono = (jid) => jid && jid.endsWith('@s.whatsapp.net');
+
+  if (esTelefono(remoteJid)) return remoteJid;
+  if (esTelefono(remoteJidAlt)) return remoteJidAlt;
+  return remoteJid; // fallback
+}
+
 // ============================================================
 // Handler principal
 // ============================================================
 async function manejarMensaje(sock, msg) {
-  const remitente = msg.key.remoteJid;
+  const remitente = obtenerJidUsuario(msg); // jid con teléfono si está disponible
   const telefono = extraerTelefono(remitente);
   const texto = extraerTexto(msg);
 
-  console.log(`📨 [${telefono}] estado recibido, texto: "${texto}"`);
+
+  //console.log('🔍 msg.key completo:', JSON.stringify(msg.key, null, 2));
+  console.log(`📨 jid completo: "${remitente}" | telefono: "${telefono}" | texto: "${texto}"`);
+  console.log(`   tipo de mensaje: ${Object.keys(msg.message || {}).join(', ')}`);
 
   // 1. Pedimos al backend la sesión (crea usuario/sesión si no existe)
   const sesionData = await apiPost('/api/sesiones/desde-whatsapp', { telefono });
   if (!sesionData.ok) {
     console.error('❌ No se pudo obtener la sesión');
-    await sock.sendMessage(remitente, { text: 'Hubo un error, intentá de nuevo.' });
+    await sock.sendMessage(msg.key.remoteJid, { text: 'Hubo un error, intentá de nuevo.' });
     return;
   }
 
@@ -131,20 +154,20 @@ async function manejarMensaje(sock, msg) {
     case 'finalizado':
       // Arrancamos un reclamo nuevo
       await apiPost(`/api/sesiones/${token}/avanzar`, { estado: 'esperando_tipo' });
-      await sock.sendMessage(remitente, { text: TEXTO_TIPO });
+      await sock.sendMessage(msg.key.remoteJid, { text: TEXTO_TIPO });
       break;
 
     case 'esperando_tipo': {
       const tipo = OPCIONES_TIPO[texto];
       if (!tipo) {
-        await sock.sendMessage(remitente, { text: 'No entendí. Elegí 1, 2, 3 o 4.' });
+        await sock.sendMessage(msg.key.remoteJid, { text: 'No entendí. Elegí 1, 2, 3 o 4.' });
         return;
       }
       await apiPost(`/api/sesiones/${token}/avanzar`, {
         estado: 'esperando_subtipo',
         datos: { tipo },
       });
-      await sock.sendMessage(remitente, { text: TEXTO_SUBTIPO[tipo] });
+      await sock.sendMessage(msg.key.remoteJid, { text: TEXTO_SUBTIPO[tipo] });
       break;
     }
 
@@ -154,40 +177,40 @@ async function manejarMensaje(sock, msg) {
       const tipo = datos.tipo;
       const subtipo = OPCIONES_SUBTIPO[tipo]?.[texto];
       if (!subtipo) {
-        await sock.sendMessage(remitente, { text: 'No entendí. Elegí una opción válida.' });
+        await sock.sendMessage(msg.key.remoteJid, { text: 'No entendí. Elegí una opción válida.' });
         return;
       }
       await apiPost(`/api/sesiones/${token}/avanzar`, {
         estado: 'esperando_direccion',
         datos: { subtipo },
       });
-      await sock.sendMessage(remitente, { text: TEXTO_DIRECCION });
+      await sock.sendMessage(msg.key.remoteJid, { text: TEXTO_DIRECCION });
       break;
     }
 
     case 'esperando_direccion': {
       if (!texto) {
-        await sock.sendMessage(remitente, { text: 'Escribí una dirección válida.' });
+        await sock.sendMessage(msg.key.remoteJid, { text: 'Escribí una dirección válida.' });
         return;
       }
       await apiPost(`/api/sesiones/${token}/avanzar`, {
         estado: 'esperando_nombre',
         datos: { direccion: texto },
       });
-      await sock.sendMessage(remitente, { text: TEXTO_NOMBRE });
+      await sock.sendMessage(msg.key.remoteJid, { text: TEXTO_NOMBRE });
       break;
     }
 
     case 'esperando_nombre': {
       if (!texto) {
-        await sock.sendMessage(remitente, { text: 'Escribí tu nombre.' });
+        await sock.sendMessage(msg.key.remoteJid, { text: 'Escribí tu nombre.' });
         return;
       }
       await apiPost(`/api/sesiones/${token}/avanzar`, {
         estado: 'esperando_foto',
         datos: { nombre: texto },
       });
-      await sock.sendMessage(remitente, { text: TEXTO_FOTO });
+      await sock.sendMessage(msg.key.remoteJid, { text: TEXTO_FOTO });
       break;
     }
 
@@ -195,7 +218,7 @@ async function manejarMensaje(sock, msg) {
       // Por ahora no procesamos la foto, solo avanzamos
       const textoLower = texto.toLowerCase();
       if (textoLower !== 'saltar' && textoLower !== 'no') {
-        await sock.sendMessage(remitente, {
+        await sock.sendMessage(msg.key.remoteJid, {
           text: 'Por ahora no procesamos fotos. Escribí "saltar" para continuar.',
         });
         return;
@@ -203,10 +226,10 @@ async function manejarMensaje(sock, msg) {
       // Finalizamos
       const resultado = await apiPost(`/api/sesiones/${token}/finalizar`);
       if (!resultado.ok) {
-        await sock.sendMessage(remitente, { text: 'Hubo un error al guardar tu reclamo.' });
+        await sock.sendMessage(msg.key.remoteJid, { text: 'Hubo un error al guardar tu reclamo.' });
         return;
       }
-      await sock.sendMessage(remitente, {
+      await sock.sendMessage(msg.key.remoteJid, {
         text: `✅ Reclamo #${resultado.reclamo.id} registrado.\nTe vamos a contactar a la brevedad.`,
       });
       break;
@@ -214,7 +237,7 @@ async function manejarMensaje(sock, msg) {
 
     default:
       console.warn('⚠️ Estado desconocido:', estado);
-      await sock.sendMessage(remitente, { text: 'Hubo un problema. Escribí "hola" para empezar.' });
+      await sock.sendMessage(msg.key.remoteJid, { text: 'Hubo un problema. Escribí "hola" para empezar.' });
   }
 }
 
