@@ -4,3 +4,4 @@ database/*.sqlite
 *.log
 uploads/*
 !uploads/.gitkeep
+bot/auth/
