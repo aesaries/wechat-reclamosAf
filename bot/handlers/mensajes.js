@@ -99,6 +99,41 @@ function extraerTelefono(jid) {
   return jid.split('@')[0];
 }
 
+/**
+ * Descarga una imagen de un mensaje de WhatsApp y la guarda en uploads/.
+ * Devuelve la ruta relativa del archivo guardado.
+ */
+async function descargarYGuardarFoto(msg, token, indice) {
+  try {
+    const buffer = await downloadMediaMessage(
+      msg,
+      'buffer',
+      {},
+      {
+        logger: console,
+        reuploadRequest: null,
+      }
+    );
+
+    // Determinamos la extensión según el mime type
+    const mime = msg.message.imageMessage.mimetype || 'image/jpeg';
+    const ext = mime.split('/')[1] || 'jpg';
+
+    // Nombre único: token + timestamp + índice + extensión
+    const nombreArchivo = `${token}_${Date.now()}_${indice}.${ext}`;
+    const rutaCompleta = path.join(UPLOADS_DIR, nombreArchivo);
+
+    // Guardamos en disco
+    fs.writeFileSync(rutaCompleta, buffer);
+
+    // Devolvemos la ruta relativa (lo que se guarda en DB)
+    return `uploads/${nombreArchivo}`;
+  } catch (err) {
+    console.error('❌ Error descargando foto:', err);
+    return null;
+  }
+}
+
 function extraerTexto(msg) {
   return (
     msg.message?.conversation ||
@@ -229,80 +264,83 @@ async function manejarMensaje(sock, msg) {
   const fotos = datosActuales.fotos || [];
 
   // --- Caso 1: llegó una foto ---
-  if (esMensajeFoto) {
-    if (fotos.length >= MAX_FOTOS) {
-      await sock.sendMessage(remitente, {
-        text: `Ya recibimos el máximo de ${MAX_FOTOS} fotos. Escribí "listo" para continuar.`,
-      });
-      return;
-    }
+        if (esMensajeFoto) {
+          if (fotos.length >= MAX_FOTOS) {
+            await sock.sendMessage(remitente, {
+              text: `Ya recibimos el máximo de ${MAX_FOTOS} fotos. Escribí "listo" para continuar.`,
+            });
+            return;
+          }
 
-    // Guardamos un marcador de la foto (la descarga real es el 5.5.3)
-    const nuevaFoto = {
-      mensaje_id: msg.key.id,
-      guardada_en: null,
-      timestamp: Date.now(),
-    };
-    fotos.push(nuevaFoto);
+          // Descargamos y guardamos la foto en disco
+          const indice = fotos.length + 1;
+          const rutaGuardada = await descargarYGuardarFoto(msg, token, indice);
 
-    await apiPost(`/api/sesiones/${token}/avanzar`, {
-      estado: 'esperando_foto',
-      datos: { fotos },      
-    });
-    console.log('🔍 Mandando al backend:', JSON.stringify({ estado: 'esperando_foto', datos: { fotos } }));
+          const nuevaFoto = {
+            mensaje_id: msg.key.id,
+            guardada_en: rutaGuardada,
+            timestamp: Date.now(),
+          };
+          fotos.push(nuevaFoto);
 
-    const restantes = MAX_FOTOS - fotos.length;
-    if (restantes > 0) {
-      await sock.sendMessage(remitente, {
-        text: `📸 Foto recibida (${fotos.length}/${MAX_FOTOS}). Podés mandar ${restantes} más o escribir "listo" para continuar.`,
-      });
-    } else {
-      await sock.sendMessage(remitente, {
-        text: `📸 Foto recibida (${fotos.length}/${MAX_FOTOS}). Escribí "listo" para continuar.`,
-      });
-    }
-    return;
-  }
+          await apiPost(`/api/sesiones/${token}/avanzar`, {
+            estado: 'esperando_foto',
+            datos: { fotos },      
+          });
+          console.log('🔍 Mandando al backend:', JSON.stringify({ estado: 'esperando_foto', datos: { fotos } }));
 
-  // --- Caso 2: el usuario escribió "listo" ---
-  if (textoLower === 'listo') {
-    if (fotos.length === 0) {
-      await sock.sendMessage(remitente, {
-        text: 'Todavía no recibimos ninguna foto. Mandá una o escribí "saltar" para continuar sin fotos.',
-      });
-      return;
-    }
+          const restantes = MAX_FOTOS - fotos.length;
+          if (restantes > 0) {
+            await sock.sendMessage(remitente, {
+              text: `📸 Foto recibida (${fotos.length}/${MAX_FOTOS}). Podés mandar ${restantes} más o escribir "listo" para continuar.`,
+            });
+          } else {
+            await sock.sendMessage(remitente, {
+              text: `📸 Foto recibida (${fotos.length}/${MAX_FOTOS}). Escribí "listo" para continuar.`,
+            });
+          }
+          return;
+        }
 
-    const resultado = await apiPost(`/api/sesiones/${token}/finalizar`);
-    if (!resultado.ok) {
-      await sock.sendMessage(remitente, { text: 'Hubo un error al guardar tu reclamo.' });
-      return;
-    }
-    await sock.sendMessage(remitente, {
-      text: `✅ Reclamo #${resultado.reclamo.id} registrado con ${fotos.length} foto(s).\nTe vamos a contactar a la brevedad.`,
-    });
-    return;
-  }
+        // --- Caso 2: el usuario escribió "listo" ---
+        if (textoLower === 'listo') {
+          if (fotos.length === 0) {
+            await sock.sendMessage(remitente, {
+              text: 'Todavía no recibimos ninguna foto. Mandá una o escribí "saltar" para continuar sin fotos.',
+            });
+            return;
+          }
 
-  // --- Caso 3: el usuario escribió "saltar" ---
-  if (textoLower === 'saltar' || textoLower === 'no') {
-    const resultado = await apiPost(`/api/sesiones/${token}/finalizar`);
-    if (!resultado.ok) {
-      await sock.sendMessage(remitente, { text: 'Hubo un error al guardar tu reclamo.' });
-      return;
-    }
-    await sock.sendMessage(remitente, {
-      text: `✅ Reclamo #${resultado.reclamo.id} registrado.\nTe vamos a contactar a la brevedad.`,
-    });
-    return;
-  }
+          const resultado = await apiPost(`/api/sesiones/${token}/finalizar`);
+          if (!resultado.ok) {
+            await sock.sendMessage(remitente, { text: 'Hubo un error al guardar tu reclamo.' });
+            return;
+          }
+          await sock.sendMessage(remitente, {
+            text: `✅ Reclamo #${resultado.reclamo.id} registrado con ${fotos.length} foto(s).\nTe vamos a contactar a la brevedad.`,
+          });
+          return;
+        }
 
-  // --- Caso 4: cualquier otra cosa ---
-  await sock.sendMessage(remitente, {
-    text: `No entendí. Mandá una foto, escribí "listo" para continuar, o "saltar" para terminar sin fotos.`,
-  });
-  break;
-}
+        // --- Caso 3: el usuario escribió "saltar" ---
+        if (textoLower === 'saltar' || textoLower === 'no') {
+          const resultado = await apiPost(`/api/sesiones/${token}/finalizar`);
+          if (!resultado.ok) {
+            await sock.sendMessage(remitente, { text: 'Hubo un error al guardar tu reclamo.' });
+            return;
+          }
+          await sock.sendMessage(remitente, {
+            text: `✅ Reclamo #${resultado.reclamo.id} registrado.\nTe vamos a contactar a la brevedad.`,
+          });
+          return;
+        }
+
+        // --- Caso 4: cualquier otra cosa ---
+        await sock.sendMessage(remitente, {
+          text: `No entendí. Mandá una foto, escribí "listo" para continuar, o "saltar" para terminar sin fotos.`,
+        });
+        break;
+      }
 
     default:
       console.warn('⚠️ Estado desconocido:', estado);
