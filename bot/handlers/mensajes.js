@@ -3,7 +3,8 @@ const { downloadMediaMessage } = require('@whiskeysockets/baileys');
 const fs = require('fs');
 const path = require('path');
 
-
+// Mapa de timers activos, uno por sesión (token)
+const timersRecordatorio = new Map();
 const MAX_FOTOS = 3;
 const UPLOADS_DIR = path.join(__dirname, '..', '..', 'uploads');
 const RECORDATORIO_MS = 30 * 1000; // 30 segundos
@@ -159,6 +160,37 @@ function obtenerJidUsuario(msg) {
   return remoteJid; // fallback
 }
 
+/**
+ * Cancela el recordatorio pendiente de una sesión (si existe).
+ */
+function cancelarRecordatorio(token) {
+  if (timersRecordatorio.has(token)) {
+    clearTimeout(timersRecordatorio.get(token));
+    timersRecordatorio.delete(token);
+  }
+}
+
+/**
+ * Programa un recordatorio para una sesión si no escribe en X ms.
+ */
+function programarRecordatorio(sock, remitente, token) {
+  cancelarRecordatorio(token);
+
+  const timer = setTimeout(async () => {
+    try {
+      await sock.sendMessage(remitente, {
+        text: `¿Terminaste? Escribí "listo" para continuar o "saltar" para finalizar sin más fotos.`,
+      });
+      console.log(`⏰ Recordatorio enviado a ${token.slice(0, 8)}...`);
+    } catch (err) {
+      console.error('❌ Error enviando recordatorio:', err);
+    }
+    timersRecordatorio.delete(token);
+  }, RECORDATORIO_MS);
+
+  timersRecordatorio.set(token, timer);
+}
+
 // ============================================================
 // Handler principal
 // ============================================================
@@ -299,11 +331,13 @@ async function manejarMensaje(sock, msg) {
               text: `📸 Foto recibida (${fotos.length}/${MAX_FOTOS}). Escribí "listo" para continuar.`,
             });
           }
+          programarRecordatorio(sock, msg.key.remoteJid, token);
           return;
         }
 
         // --- Caso 2: el usuario escribió "listo" ---
         if (textoLower === 'listo') {
+          cancelarRecordatorio(token);
           if (fotos.length === 0) {
             await sock.sendMessage(remitente, {
               text: 'Todavía no recibimos ninguna foto. Mandá una o escribí "saltar" para continuar sin fotos.',
@@ -324,6 +358,7 @@ async function manejarMensaje(sock, msg) {
 
         // --- Caso 3: el usuario escribió "saltar" ---
         if (textoLower === 'saltar' || textoLower === 'no') {
+          cancelarRecordatorio(token);
           const resultado = await apiPost(`/api/sesiones/${token}/finalizar`);
           if (!resultado.ok) {
             await sock.sendMessage(remitente, { text: 'Hubo un error al guardar tu reclamo.' });
@@ -337,8 +372,11 @@ async function manejarMensaje(sock, msg) {
 
         // --- Caso 4: cualquier otra cosa ---
         await sock.sendMessage(remitente, {
+          
           text: `No entendí. Mandá una foto, escribí "listo" para continuar, o "saltar" para terminar sin fotos.`,
+          
         });
+        cancelarRecordatorio(token);
         break;
       }
 
