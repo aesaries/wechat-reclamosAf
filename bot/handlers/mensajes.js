@@ -9,6 +9,19 @@ const MAX_FOTOS = 3;
 const UPLOADS_DIR = path.join(__dirname, '..', '..', 'uploads');
 const RECORDATORIO_MS = 30 * 1000; // 30 segundos
 const BACKEND_URL = process.env.BACKEND_URL || 'http://localhost:3000';
+const TEXTO_AYUDA = `📖 Ayuda rápida:
+
+• Escribí "hola" para empezar un reclamo nuevo.
+• Escribí "cancelar" para cancelar el reclamo actual.
+• Escribí "ayuda" para ver este mensaje.
+
+Durante el reclamo, respondé con el número de la opción.`;
+const SALUDOS = [
+  'hola', 'holaa', 'holaaa', 'buenas', 'buen día', 'buen dia',
+  'buenas tardes', 'buenas noches', 'buenos días', 'buenos dias',
+  'hey', 'hi', 'hello', 'qué tal', 'que tal', 'qué onda', 'que onda',
+  'empezar', 'iniciar', 'comenzar', 'menu', 'menú',
+];
 
 // ============================================================
 // Opciones de cada paso (deben coincidir con lo que espera el flujo)
@@ -214,6 +227,31 @@ function programarRecordatorio(sock, remitente, token) {
   timersRecordatorio.set(token, timer);
 }
 
+/**
+ * Detecta si un texto es un saludo/comando de inicio.
+ */
+function esSaludo(texto) {
+  const t = texto.toLowerCase().trim();
+  return SALUDOS.includes(t);
+}
+
+/**
+ * Detecta si un texto es un comando de cancelación.
+ */
+function esCancelar(texto) {
+  const t = texto.toLowerCase().trim();
+  return ['cancelar', 'cancela', 'salir', 'abortar'].includes(t);
+}
+
+/**
+ * Detecta si un texto es un pedido de ayuda.
+ */
+function esAyuda(texto) {
+  const t = texto.toLowerCase().trim();
+  return ['ayuda', 'help', 'opciones', '?', '???', 'no entiendo'].includes(t);
+}
+
+
 // ============================================================
 // Handler principal
 // ============================================================
@@ -234,28 +272,22 @@ async function manejarMensaje(sock, msg) {
   console.log('🔍 Datos temporales al inicio:', sesionData.datos_temporales);
 
 
-      // Detectar mensajes no soportados
-    
-    if (tipoNoSoportado === 'ignorar') {
-      return; // no hacemos nada
-    }
-    if (tipoNoSoportado) {
-      const mensajes = {
-        audio: 'Por ahora no puedo escuchar audios. ¿Me lo escribís por texto? Gracias.',
-        video: 'Por ahora no puedo ver videos. ¿Me lo contás por texto? Gracias.',
-        documento: 'Por ahora no puedo abrir documentos. ¿Me lo escribís por texto? Gracias.',
-        sticker: 'No puedo procesar stickers. ¿Me lo escribís por texto? Gracias.',
-        contacto: 'Por ahora no puedo procesar contactos. ¿Me lo escribís por texto? Gracias.',
-        encuesta: 'No puedo procesar encuestas. ¿Me lo escribís por texto? Gracias.',
-      };
+  // Detectar mensajes no soportados
 
-      await sock.sendMessage(msg.key.remoteJid, { text: mensajes[tipoNoSoportado] });
-      return;
-    }
+  if (tipoNoSoportado === 'ignorar') {
+    return; // no hacemos nada
+  }
+  if (tipoNoSoportado) {
+    const mensajes = {
+      audio: 'Por ahora no puedo escuchar audios. ¿Me lo escribís por texto? Gracias.',
+      video: 'Por ahora no puedo ver videos. ¿Me lo contás por texto? Gracias.',
+      documento: 'Por ahora no puedo abrir documentos. ¿Me lo escribís por texto? Gracias.',
+      sticker: 'No puedo procesar stickers. ¿Me lo escribís por texto? Gracias.',
+      contacto: 'Por ahora no puedo procesar contactos. ¿Me lo escribís por texto? Gracias.',
+      encuesta: 'No puedo procesar encuestas. ¿Me lo escribís por texto? Gracias.',
+    };
 
-  if (!sesionData.ok) {
-    console.error('❌ No se pudo obtener la sesión');
-    await sock.sendMessage(msg.key.remoteJid, { text: 'Hubo un error, intentá de nuevo.' });
+    await sock.sendMessage(msg.key.remoteJid, { text: mensajes[tipoNoSoportado] });
     return;
   }
 
@@ -263,6 +295,50 @@ async function manejarMensaje(sock, msg) {
   let estado = sesionData.estado_conversacion;
 
   console.log(`   → estado actual: ${estado}`);
+
+  // --- Comandos de escape (aplican en cualquier estado) ---
+
+  // "cancelar" → limpia la sesión y arranca de cero
+  if (esCancelar(texto)) {
+    cancelarRecordatorio(token);
+    await apiPost(`/api/sesiones/${token}/avanzar`, {
+      estado: 'inicio',
+      datos: {}, // vaciamos temporales
+    });
+    await sock.sendMessage(msg.key.remoteJid, {
+      text: '❌ Cancelado. Si querés empezar de nuevo, escribí "hola".',
+    });
+    return;
+  }
+
+  // "ayuda" → muestra las opciones disponibles
+  if (esAyuda(texto)) {
+    await sock.sendMessage(msg.key.remoteJid, {
+      text: TEXTO_AYUDA,
+    });
+    return;
+  }
+
+  // "hola" o saludos → arranca de cero (como si fuera la primera vez)
+  if (esSaludo(texto)) {
+    cancelarRecordatorio(token);
+    await apiPost(`/api/sesiones/${token}/avanzar`, {
+      estado: 'esperando_tipo',
+      datos: {}, // vaciamos temporales
+    });
+    await sock.sendMessage(msg.key.remoteJid, { text: TEXTO_TIPO });
+    return;
+  }
+
+
+
+  if (!sesionData.ok) {
+    console.error('❌ No se pudo obtener la sesión');
+    await sock.sendMessage(msg.key.remoteJid, { text: 'Hubo un error, intentá de nuevo.' });
+    return;
+  }
+
+
 
   // 2. Procesamos según el estado
   switch (estado) {
@@ -331,99 +407,99 @@ async function manejarMensaje(sock, msg) {
     }
 
     case 'esperando_foto': {
-  const textoLower = texto.toLowerCase();
-  const esMensajeFoto = !!msg.message?.imageMessage;
+      const textoLower = texto.toLowerCase();
+      const esMensajeFoto = !!msg.message?.imageMessage;
 
-  // Recuperamos los datos temporales actuales
-  const datosActuales = sesionData.datos_temporales
-    ? JSON.parse(sesionData.datos_temporales)
-    : {};
-  const fotos = datosActuales.fotos || [];
+      // Recuperamos los datos temporales actuales
+      const datosActuales = sesionData.datos_temporales
+        ? JSON.parse(sesionData.datos_temporales)
+        : {};
+      const fotos = datosActuales.fotos || [];
 
-  // --- Caso 1: llegó una foto ---
-        if (esMensajeFoto) {
-          if (fotos.length >= MAX_FOTOS) {
-            await sock.sendMessage(remitente, {
-              text: `Ya recibimos el máximo de ${MAX_FOTOS} fotos. Escribí "listo" para continuar.`,
-            });
-            return;
-          }
-
-          // Descargamos y guardamos la foto en disco
-          const indice = fotos.length + 1;
-          const rutaGuardada = await descargarYGuardarFoto(msg, token, indice);
-
-          const nuevaFoto = {
-            mensaje_id: msg.key.id,
-            guardada_en: rutaGuardada,
-            timestamp: Date.now(),
-          };
-          fotos.push(nuevaFoto);
-
-          await apiPost(`/api/sesiones/${token}/avanzar`, {
-            estado: 'esperando_foto',
-            datos: { fotos },      
-          });
-          console.log('🔍 Mandando al backend:', JSON.stringify({ estado: 'esperando_foto', datos: { fotos } }));
-
-          const restantes = MAX_FOTOS - fotos.length;
-          if (restantes > 0) {
-            await sock.sendMessage(remitente, {
-              text: `📸 Foto recibida (${fotos.length}/${MAX_FOTOS}). Podés mandar ${restantes} más o escribir "listo" para continuar.`,
-            });
-          } else {
-            await sock.sendMessage(remitente, {
-              text: `📸 Foto recibida (${fotos.length}/${MAX_FOTOS}). Escribí "listo" para continuar.`,
-            });
-          }
-          programarRecordatorio(sock, msg.key.remoteJid, token);
-          return;
-        }
-
-        // --- Caso 2: el usuario escribió "listo" ---
-        if (textoLower === 'listo') {
-          cancelarRecordatorio(token);
-          if (fotos.length === 0) {
-            await sock.sendMessage(remitente, {
-              text: 'Todavía no recibimos ninguna foto. Mandá una o escribí "saltar" para continuar sin fotos.',
-            });
-            return;
-          }
-
-          const resultado = await apiPost(`/api/sesiones/${token}/finalizar`);
-          if (!resultado.ok) {
-            await sock.sendMessage(remitente, { text: 'Hubo un error al guardar tu reclamo.' });
-            return;
-          }
+      // --- Caso 1: llegó una foto ---
+      if (esMensajeFoto) {
+        if (fotos.length >= MAX_FOTOS) {
           await sock.sendMessage(remitente, {
-            text: `✅ Reclamo #${resultado.reclamo.id} registrado con ${fotos.length} foto(s).\nTe vamos a contactar a la brevedad.`,
+            text: `Ya recibimos el máximo de ${MAX_FOTOS} fotos. Escribí "listo" para continuar.`,
           });
           return;
         }
 
-        // --- Caso 3: el usuario escribió "saltar" ---
-        if (textoLower === 'saltar' || textoLower === 'no') {
-          cancelarRecordatorio(token);
-          const resultado = await apiPost(`/api/sesiones/${token}/finalizar`);
-          if (!resultado.ok) {
-            await sock.sendMessage(remitente, { text: 'Hubo un error al guardar tu reclamo.' });
-            return;
-          }
-          await sock.sendMessage(remitente, {
-            text: `✅ Reclamo #${resultado.reclamo.id} registrado.\nTe vamos a contactar a la brevedad.`,
-          });
-          return;
-        }
+        // Descargamos y guardamos la foto en disco
+        const indice = fotos.length + 1;
+        const rutaGuardada = await descargarYGuardarFoto(msg, token, indice);
 
-        // --- Caso 4: cualquier otra cosa ---
-        await sock.sendMessage(remitente, {
-          
-          text: `No entendí. Mandá una foto, escribí "listo" para continuar, o "saltar" para terminar sin fotos.`,
-          
+        const nuevaFoto = {
+          mensaje_id: msg.key.id,
+          guardada_en: rutaGuardada,
+          timestamp: Date.now(),
+        };
+        fotos.push(nuevaFoto);
+
+        await apiPost(`/api/sesiones/${token}/avanzar`, {
+          estado: 'esperando_foto',
+          datos: { fotos },
         });
-        cancelarRecordatorio(token);
-        break;
+        console.log('🔍 Mandando al backend:', JSON.stringify({ estado: 'esperando_foto', datos: { fotos } }));
+
+        const restantes = MAX_FOTOS - fotos.length;
+        if (restantes > 0) {
+          await sock.sendMessage(remitente, {
+            text: `📸 Foto recibida (${fotos.length}/${MAX_FOTOS}). Podés mandar ${restantes} más o escribir "listo" para continuar.`,
+          });
+        } else {
+          await sock.sendMessage(remitente, {
+            text: `📸 Foto recibida (${fotos.length}/${MAX_FOTOS}). Escribí "listo" para continuar.`,
+          });
+        }
+        programarRecordatorio(sock, msg.key.remoteJid, token);
+        return;
       }
+
+      // --- Caso 2: el usuario escribió "listo" ---
+      if (textoLower === 'listo') {
+        cancelarRecordatorio(token);
+        if (fotos.length === 0) {
+          await sock.sendMessage(remitente, {
+            text: 'Todavía no recibimos ninguna foto. Mandá una o escribí "saltar" para continuar sin fotos.',
+          });
+          return;
+        }
+
+        const resultado = await apiPost(`/api/sesiones/${token}/finalizar`);
+        if (!resultado.ok) {
+          await sock.sendMessage(remitente, { text: 'Hubo un error al guardar tu reclamo.' });
+          return;
+        }
+        await sock.sendMessage(remitente, {
+          text: `✅ Reclamo #${resultado.reclamo.id} registrado con ${fotos.length} foto(s).\nTe vamos a contactar a la brevedad.`,
+        });
+        return;
+      }
+
+      // --- Caso 3: el usuario escribió "saltar" ---
+      if (textoLower === 'saltar' || textoLower === 'no') {
+        cancelarRecordatorio(token);
+        const resultado = await apiPost(`/api/sesiones/${token}/finalizar`);
+        if (!resultado.ok) {
+          await sock.sendMessage(remitente, { text: 'Hubo un error al guardar tu reclamo.' });
+          return;
+        }
+        await sock.sendMessage(remitente, {
+          text: `✅ Reclamo #${resultado.reclamo.id} registrado.\nTe vamos a contactar a la brevedad.`,
+        });
+        return;
+      }
+
+      // --- Caso 4: cualquier otra cosa ---
+      await sock.sendMessage(remitente, {
+
+        text: `No entendí. Mandá una foto, escribí "listo" para continuar, o "saltar" para terminar sin fotos.`,
+
+      });
+      cancelarRecordatorio(token);
+      break;
+    }
 
     default:
       console.warn('⚠️ Estado desconocido:', estado);

@@ -105,8 +105,13 @@ router.post('/:token/avanzar', (req, res) => {
     try { temporales = JSON.parse(sesion.datos_temporales); } catch (e) { temporales = {}; }
   }
   if (datos && typeof datos === 'object') {
-    temporales = { ...temporales, ...datos };
-  }
+    if (Object.keys(datos).length === 0 && Object.keys(temporales).length > 0) {
+      // Si mandaron un objeto vacío y había datos, limpiamos todo
+      temporales = {};
+    } else {
+      temporales = { ...temporales, ...datos };
+    }
+  } 
 
   db.prepare(`
     UPDATE sesiones
