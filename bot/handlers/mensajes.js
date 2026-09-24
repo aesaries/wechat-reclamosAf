@@ -147,6 +147,29 @@ function esFoto(msg) {
   return !!msg.message?.imageMessage;
 }
 
+/**
+ * Detecta si el mensaje es de un tipo que no podemos procesar en el flujo.
+ * Devuelve un mensaje de respuesta, o null si el mensaje es procesable.
+ */
+function detectarMensajeNoSoportado(msg) {
+  const m = msg.message;
+  if (!m) return null;
+
+  // Ignorar silenciosamente estos (no merecen respuesta)
+  if (m.reactionMessage) return 'ignorar';
+  if (m.protocolMessage) return 'ignorar';
+
+  // Detectar tipos no soportados
+  if (m.audioMessage) return 'audio';
+  if (m.videoMessage) return 'video';
+  if (m.documentMessage) return 'documento';
+  if (m.stickerMessage) return 'sticker';
+  if (m.contactMessage || m.contactsArrayMessage) return 'contacto';
+  if (m.pollCreationMessage || m.pollCreationMessageV3) return 'encuesta';
+
+  return null;
+}
+
 /** 
 * Obtiene el jid con teléfono real, contemplando la migración a LID de WhatsApp.
  * Prioriza el que termine en @s.whatsapp.net, y si ninguno lo hace, cae al remoteJid.
@@ -198,6 +221,8 @@ async function manejarMensaje(sock, msg) {
   const remitente = obtenerJidUsuario(msg); // jid con teléfono si está disponible
   const telefono = extraerTelefono(remitente);
   const texto = extraerTexto(msg);
+  const tipoNoSoportado = detectarMensajeNoSoportado(msg);
+
 
 
   //console.log('🔍 msg.key completo:', JSON.stringify(msg.key, null, 2));
@@ -207,6 +232,26 @@ async function manejarMensaje(sock, msg) {
   // 1. Pedimos al backend la sesión (crea usuario/sesión si no existe)
   const sesionData = await apiPost('/api/sesiones/desde-whatsapp', { telefono });
   console.log('🔍 Datos temporales al inicio:', sesionData.datos_temporales);
+
+
+      // Detectar mensajes no soportados
+    
+    if (tipoNoSoportado === 'ignorar') {
+      return; // no hacemos nada
+    }
+    if (tipoNoSoportado) {
+      const mensajes = {
+        audio: 'Por ahora no puedo escuchar audios. ¿Me lo escribís por texto? Gracias.',
+        video: 'Por ahora no puedo ver videos. ¿Me lo contás por texto? Gracias.',
+        documento: 'Por ahora no puedo abrir documentos. ¿Me lo escribís por texto? Gracias.',
+        sticker: 'No puedo procesar stickers. ¿Me lo escribís por texto? Gracias.',
+        contacto: 'Por ahora no puedo procesar contactos. ¿Me lo escribís por texto? Gracias.',
+        encuesta: 'No puedo procesar encuestas. ¿Me lo escribís por texto? Gracias.',
+      };
+
+      await sock.sendMessage(msg.key.remoteJid, { text: mensajes[tipoNoSoportado] });
+      return;
+    }
 
   if (!sesionData.ok) {
     console.error('❌ No se pudo obtener la sesión');
