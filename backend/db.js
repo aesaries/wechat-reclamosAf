@@ -1,13 +1,17 @@
 // backend/db.js
-const Database = require('better-sqlite3');
-const path = require('path');
-require('dotenv').config();
+const Database = require("better-sqlite3");
+const path = require("path");
+require("dotenv").config();
 
 // Ruta de la base de datos (relativa a la raíz del proyecto)
-const dbPath = path.resolve(__dirname, '..', process.env.DB_PATH || './database/reclamos.sqlite');
+const dbPath = path.resolve(
+  __dirname,
+  "..",
+  process.env.DB_PATH || "./database/reclamos.sqlite",
+);
 
 const db = new Database(dbPath);
-db.pragma('journal_mode = WAL'); // mejora el rendimiento
+db.pragma("journal_mode = WAL"); // mejora el rendimiento
 
 // Creamos las tablas si no existen
 db.exec(`
@@ -27,6 +31,7 @@ db.exec(`
     expira_en DATETIME NOT NULL,
     estado_conversacion TEXT DEFAULT 'inicio',
     datos_temporales TEXT,
+    ultima_actividad DATETIME DEFAULT CURRENT_TIMESTAMP,
     creado_en DATETIME DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (usuario_id) REFERENCES usuarios(id)
   );
@@ -58,6 +63,6 @@ db.exec(`
   );
 `);
 
-console.log('✅ Base de datos lista en:', dbPath);
+console.log("✅ Base de datos lista en:", dbPath);
 
 module.exports = db;
