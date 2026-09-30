@@ -1,14 +1,20 @@
 // bot/handlers/mensajes.js
-const { downloadMediaMessage } = require('@whiskeysockets/baileys');
-const fs = require('fs');
-const path = require('path');
+const { downloadMediaMessage } = require("@whiskeysockets/baileys");
+const fs = require("fs");
+const path = require("path");
+const TEXTO_UBICACION = `¿Querés compartir la ubicación exacta del problema? (opcional)
+
+Tocá clip 📎 → Ubicación → Enviar mi ubicación actual.
+Podés mover el pin en el mapa para marcar el punto exacto.
+
+Si no querés compartirla, escribí "saltar".`;
 
 // Mapa de timers activos, uno por sesión (token)
 const timersRecordatorio = new Map();
 const MAX_FOTOS = 3;
-const UPLOADS_DIR = path.join(__dirname, '..', '..', 'uploads');
+const UPLOADS_DIR = path.join(__dirname, "..", "..", "uploads");
 const RECORDATORIO_MS = 30 * 1000; // 30 segundos
-const BACKEND_URL = process.env.BACKEND_URL || 'http://localhost:3000';
+const BACKEND_URL = process.env.BACKEND_URL || "http://localhost:3000";
 const TEXTO_AYUDA = `📖 Ayuda rápida:
 
 • Escribí "hola" para empezar un reclamo nuevo.
@@ -17,39 +23,57 @@ const TEXTO_AYUDA = `📖 Ayuda rápida:
 
 Durante el reclamo, respondé con el número de la opción.`;
 const SALUDOS = [
-  'hola', 'holaa', 'holaaa', 'buenas', 'buen día', 'buen dia',
-  'buenas tardes', 'buenas noches', 'buenos días', 'buenos dias',
-  'hey', 'hi', 'hello', 'qué tal', 'que tal', 'qué onda', 'que onda',
-  'empezar', 'iniciar', 'comenzar', 'menu', 'menú',
+  "hola",
+  "holaa",
+  "holaaa",
+  "buenas",
+  "buen día",
+  "buen dia",
+  "buenas tardes",
+  "buenas noches",
+  "buenos días",
+  "buenos dias",
+  "hey",
+  "hi",
+  "hello",
+  "qué tal",
+  "que tal",
+  "qué onda",
+  "que onda",
+  "empezar",
+  "iniciar",
+  "comenzar",
+  "menu",
+  "menú",
 ];
 
 // ============================================================
 // Opciones de cada paso (deben coincidir con lo que espera el flujo)
 // ============================================================
 const OPCIONES_TIPO = {
-  '1': 'residuos',
-  '2': 'poda',
-  '3': 'escombros',
-  '4': 'otro',
+  1: "residuos",
+  2: "poda",
+  3: "escombros",
+  4: "otro",
 };
 
 const OPCIONES_SUBTIPO = {
   residuos: {
-    '1': 'no_levantan',
-    '2': 'contenedor_desbordado',
-    '3': 'fuera_de_horario',
+    1: "no_levantan",
+    2: "contenedor_desbordado",
+    3: "fuera_de_horario",
   },
   poda: {
-    '1': 'no_acondicionada',
-    '2': 'supera_1m3',
-    '3': 'no_retirada',
+    1: "no_acondicionada",
+    2: "supera_1m3",
+    3: "no_retirada",
   },
   escombros: {
-    '1': 'via_publica',
-    '2': 'sin_autorizacion',
+    1: "via_publica",
+    2: "sin_autorizacion",
   },
   otro: {
-    '1': 'otro',
+    1: "otro",
   },
 };
 
@@ -102,15 +126,15 @@ Si no querés mandar ninguna, escribí "saltar".`;
 // ============================================================
 async function apiPost(ruta, body = {}) {
   const resp = await fetch(`${BACKEND_URL}${ruta}`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
     body: JSON.stringify(body),
   });
   return resp.json();
 }
 
 function extraerTelefono(jid) {
-  return jid.split('@')[0];
+  return jid.split("@")[0];
 }
 
 /**
@@ -121,17 +145,17 @@ async function descargarYGuardarFoto(msg, token, indice) {
   try {
     const buffer = await downloadMediaMessage(
       msg,
-      'buffer',
+      "buffer",
       {},
       {
         logger: console,
         reuploadRequest: null,
-      }
+      },
     );
 
     // Determinamos la extensión según el mime type
-    const mime = msg.message.imageMessage.mimetype || 'image/jpeg';
-    const ext = mime.split('/')[1] || 'jpg';
+    const mime = msg.message.imageMessage.mimetype || "image/jpeg";
+    const ext = mime.split("/")[1] || "jpg";
 
     // Nombre único: token + timestamp + índice + extensión
     const nombreArchivo = `${token}_${Date.now()}_${indice}.${ext}`;
@@ -143,7 +167,7 @@ async function descargarYGuardarFoto(msg, token, indice) {
     // Devolvemos la ruta relativa (lo que se guarda en DB)
     return `uploads/${nombreArchivo}`;
   } catch (err) {
-    console.error('❌ Error descargando foto:', err);
+    console.error("❌ Error descargando foto:", err);
     return null;
   }
 }
@@ -152,7 +176,7 @@ function extraerTexto(msg) {
   return (
     msg.message?.conversation ||
     msg.message?.extendedTextMessage?.text ||
-    ''
+    ""
   ).trim();
 }
 
@@ -169,27 +193,27 @@ function detectarMensajeNoSoportado(msg) {
   if (!m) return null;
 
   // Ignorar silenciosamente estos (no merecen respuesta)
-  if (m.reactionMessage) return 'ignorar';
-  if (m.protocolMessage) return 'ignorar';
+  if (m.reactionMessage) return "ignorar";
+  if (m.protocolMessage) return "ignorar";
 
   // Detectar tipos no soportados
-  if (m.audioMessage) return 'audio';
-  if (m.videoMessage) return 'video';
-  if (m.documentMessage) return 'documento';
-  if (m.stickerMessage) return 'sticker';
-  if (m.contactMessage || m.contactsArrayMessage) return 'contacto';
-  if (m.pollCreationMessage || m.pollCreationMessageV3) return 'encuesta';
+  if (m.audioMessage) return "audio";
+  if (m.videoMessage) return "video";
+  if (m.documentMessage) return "documento";
+  if (m.stickerMessage) return "sticker";
+  if (m.contactMessage || m.contactsArrayMessage) return "contacto";
+  if (m.pollCreationMessage || m.pollCreationMessageV3) return "encuesta";
 
   return null;
 }
 
-/** 
-* Obtiene el jid con teléfono real, contemplando la migración a LID de WhatsApp.
+/**
+ * Obtiene el jid con teléfono real, contemplando la migración a LID de WhatsApp.
  * Prioriza el que termine en @s.whatsapp.net, y si ninguno lo hace, cae al remoteJid.
  */
 function obtenerJidUsuario(msg) {
   const { remoteJid, remoteJidAlt } = msg.key;
-  const esTelefono = (jid) => jid && jid.endsWith('@s.whatsapp.net');
+  const esTelefono = (jid) => jid && jid.endsWith("@s.whatsapp.net");
 
   if (esTelefono(remoteJid)) return remoteJid;
   if (esTelefono(remoteJidAlt)) return remoteJidAlt;
@@ -219,7 +243,7 @@ function programarRecordatorio(sock, remitente, token) {
       });
       console.log(`⏰ Recordatorio enviado a ${token.slice(0, 8)}...`);
     } catch (err) {
-      console.error('❌ Error enviando recordatorio:', err);
+      console.error("❌ Error enviando recordatorio:", err);
     }
     timersRecordatorio.delete(token);
   }, RECORDATORIO_MS);
@@ -240,7 +264,7 @@ function esSaludo(texto) {
  */
 function esCancelar(texto) {
   const t = texto.toLowerCase().trim();
-  return ['cancelar', 'cancela', 'salir', 'abortar'].includes(t);
+  return ["cancelar", "cancela", "salir", "abortar"].includes(t);
 }
 
 /**
@@ -248,9 +272,8 @@ function esCancelar(texto) {
  */
 function esAyuda(texto) {
   const t = texto.toLowerCase().trim();
-  return ['ayuda', 'help', 'opciones', '?', '???', 'no entiendo'].includes(t);
+  return ["ayuda", "help", "opciones", "?", "???", "no entiendo"].includes(t);
 }
-
 
 // ============================================================
 // Handler principal
@@ -261,33 +284,43 @@ async function manejarMensaje(sock, msg) {
   const texto = extraerTexto(msg);
   const tipoNoSoportado = detectarMensajeNoSoportado(msg);
 
-
-
   //console.log('🔍 msg.key completo:', JSON.stringify(msg.key, null, 2));
-  console.log(`📨 jid completo: "${remitente}" | telefono: "${telefono}" | texto: "${texto}"`);
-  console.log(`   tipo de mensaje: ${Object.keys(msg.message || {}).join(', ')}`);
+  console.log(
+    `📨 jid completo: "${remitente}" | telefono: "${telefono}" | texto: "${texto}"`,
+  );
+  console.log(
+    `   tipo de mensaje: ${Object.keys(msg.message || {}).join(", ")}`,
+  );
 
   // 1. Pedimos al backend la sesión (crea usuario/sesión si no existe)
-  const sesionData = await apiPost('/api/sesiones/desde-whatsapp', { telefono });
-  console.log('🔍 Datos temporales al inicio:', sesionData.datos_temporales);
-
+  const sesionData = await apiPost("/api/sesiones/desde-whatsapp", {
+    telefono,
+  });
+  console.log("🔍 Datos temporales al inicio:", sesionData.datos_temporales);
 
   // Detectar mensajes no soportados
 
-  if (tipoNoSoportado === 'ignorar') {
+  if (tipoNoSoportado === "ignorar") {
     return; // no hacemos nada
   }
   if (tipoNoSoportado) {
     const mensajes = {
-      audio: 'Por ahora no puedo escuchar audios. ¿Me lo escribís por texto? Gracias.',
-      video: 'Por ahora no puedo ver videos. ¿Me lo contás por texto? Gracias.',
-      documento: 'Por ahora no puedo abrir documentos. ¿Me lo escribís por texto? Gracias.',
-      sticker: 'No puedo procesar stickers. ¿Me lo escribís por texto? Gracias.',
-      contacto: 'Por ahora no puedo procesar contactos. ¿Me lo escribís por texto? Gracias.',
-      encuesta: 'No puedo procesar encuestas. ¿Me lo escribís por texto? Gracias.',
+      audio:
+        "Por ahora no puedo escuchar audios. ¿Me lo escribís por texto? Gracias.",
+      video: "Por ahora no puedo ver videos. ¿Me lo contás por texto? Gracias.",
+      documento:
+        "Por ahora no puedo abrir documentos. ¿Me lo escribís por texto? Gracias.",
+      sticker:
+        "No puedo procesar stickers. ¿Me lo escribís por texto? Gracias.",
+      contacto:
+        "Por ahora no puedo procesar contactos. ¿Me lo escribís por texto? Gracias.",
+      encuesta:
+        "No puedo procesar encuestas. ¿Me lo escribís por texto? Gracias.",
     };
 
-    await sock.sendMessage(msg.key.remoteJid, { text: mensajes[tipoNoSoportado] });
+    await sock.sendMessage(msg.key.remoteJid, {
+      text: mensajes[tipoNoSoportado],
+    });
     return;
   }
 
@@ -302,7 +335,7 @@ async function manejarMensaje(sock, msg) {
   if (esCancelar(texto)) {
     cancelarRecordatorio(token);
     await apiPost(`/api/sesiones/${token}/avanzar`, {
-      estado: 'inicio',
+      estado: "inicio",
       datos: {}, // vaciamos temporales
     });
     await sock.sendMessage(msg.key.remoteJid, {
@@ -323,90 +356,119 @@ async function manejarMensaje(sock, msg) {
   if (esSaludo(texto)) {
     cancelarRecordatorio(token);
     await apiPost(`/api/sesiones/${token}/avanzar`, {
-      estado: 'esperando_tipo',
+      estado: "esperando_tipo",
       datos: {}, // vaciamos temporales
     });
     await sock.sendMessage(msg.key.remoteJid, { text: TEXTO_TIPO });
     return;
   }
 
-
-
   if (!sesionData.ok) {
-    console.error('❌ No se pudo obtener la sesión');
-    await sock.sendMessage(msg.key.remoteJid, { text: 'Hubo un error, intentá de nuevo.' });
+    console.error("❌ No se pudo obtener la sesión");
+    await sock.sendMessage(msg.key.remoteJid, {
+      text: "Hubo un error, intentá de nuevo.",
+    });
     return;
   }
 
-
-
   // 2. Procesamos según el estado
   switch (estado) {
-    case 'inicio':
-    case 'finalizado':
+    case "inicio":
+    case "finalizado":
       // Arrancamos un reclamo nuevo
-      await apiPost(`/api/sesiones/${token}/avanzar`, { estado: 'esperando_tipo' });
+      await apiPost(`/api/sesiones/${token}/avanzar`, {
+        estado: "esperando_tipo",
+      });
       await sock.sendMessage(msg.key.remoteJid, { text: TEXTO_TIPO });
       break;
 
-    case 'esperando_tipo': {
+    case "esperando_tipo": {
       const tipo = OPCIONES_TIPO[texto];
       if (!tipo) {
-        await sock.sendMessage(msg.key.remoteJid, { text: 'No entendí. Elegí 1, 2, 3 o 4.' });
+        await sock.sendMessage(msg.key.remoteJid, {
+          text: "No entendí. Elegí 1, 2, 3 o 4.",
+        });
         return;
       }
       await apiPost(`/api/sesiones/${token}/avanzar`, {
-        estado: 'esperando_subtipo',
+        estado: "esperando_subtipo",
         datos: { tipo },
       });
       await sock.sendMessage(msg.key.remoteJid, { text: TEXTO_SUBTIPO[tipo] });
       break;
     }
 
-    case 'esperando_subtipo': {
+    case "esperando_subtipo": {
       // Necesitamos el tipo que ya guardó
-      const datos = sesionData.datos_temporales ? JSON.parse(sesionData.datos_temporales) : {};
+      const datos = sesionData.datos_temporales
+        ? JSON.parse(sesionData.datos_temporales)
+        : {};
       const tipo = datos.tipo;
       const subtipo = OPCIONES_SUBTIPO[tipo]?.[texto];
       if (!subtipo) {
-        await sock.sendMessage(msg.key.remoteJid, { text: 'No entendí. Elegí una opción válida.' });
+        await sock.sendMessage(msg.key.remoteJid, {
+          text: "No entendí. Elegí una opción válida.",
+        });
         return;
       }
       await apiPost(`/api/sesiones/${token}/avanzar`, {
-        estado: 'esperando_direccion',
+        estado: "esperando_direccion",
         datos: { subtipo },
       });
       await sock.sendMessage(msg.key.remoteJid, { text: TEXTO_DIRECCION });
       break;
     }
 
-    case 'esperando_direccion': {
+    case "esperando_direccion": {
       if (!texto) {
-        await sock.sendMessage(msg.key.remoteJid, { text: 'Escribí una dirección válida.' });
+        await sock.sendMessage(remitente, {
+          text: "Escribí una dirección válida.",
+        });
         return;
       }
       await apiPost(`/api/sesiones/${token}/avanzar`, {
-        estado: 'esperando_nombre',
+        estado: "esperando_nombre", // ← esto cambia a 'esperando_ubicacion'
         datos: { direccion: texto },
       });
-      await sock.sendMessage(msg.key.remoteJid, { text: TEXTO_NOMBRE });
+      await sock.sendMessage(remitente, { text: TEXTO_NOMBRE }); // ← esto cambia a TEXTO_UBICACION
       break;
     }
 
-    case 'esperando_nombre': {
+    case "esperando_ubicacion": {
+      const textoLower = texto.toLowerCase();
+
+      // Por ahora solo soportamos "saltar". Las ubicaciones y el resto
+      // se manejan en los pasos 4.2 y 4.3.
+      if (textoLower === "saltar") {
+        await apiPost(`/api/sesiones/${token}/avanzar`, {
+          estado: "esperando_nombre",
+        });
+        await sock.sendMessage(msg.key.remoteJid, { text: TEXTO_NOMBRE });
+        return;
+      }
+
+      await sock.sendMessage(msg.key.remoteJid, {
+        text: 'Todavía no procesamos ubicaciones. Escribí "saltar" para continuar.',
+      });
+      break;
+    }
+
+    case "esperando_nombre": {
       if (!texto) {
-        await sock.sendMessage(msg.key.remoteJid, { text: 'Escribí tu nombre.' });
+        await sock.sendMessage(msg.key.remoteJid, {
+          text: "Escribí tu nombre.",
+        });
         return;
       }
       await apiPost(`/api/sesiones/${token}/avanzar`, {
-        estado: 'esperando_foto',
+        estado: "esperando_foto",
         datos: { nombre: texto },
       });
       await sock.sendMessage(msg.key.remoteJid, { text: TEXTO_FOTO });
       break;
     }
 
-    case 'esperando_foto': {
+    case "esperando_foto": {
       const textoLower = texto.toLowerCase();
       const esMensajeFoto = !!msg.message?.imageMessage;
 
@@ -437,10 +499,13 @@ async function manejarMensaje(sock, msg) {
         fotos.push(nuevaFoto);
 
         await apiPost(`/api/sesiones/${token}/avanzar`, {
-          estado: 'esperando_foto',
+          estado: "esperando_foto",
           datos: { fotos },
         });
-        console.log('🔍 Mandando al backend:', JSON.stringify({ estado: 'esperando_foto', datos: { fotos } }));
+        console.log(
+          "🔍 Mandando al backend:",
+          JSON.stringify({ estado: "esperando_foto", datos: { fotos } }),
+        );
 
         const restantes = MAX_FOTOS - fotos.length;
         if (restantes > 0) {
@@ -457,7 +522,7 @@ async function manejarMensaje(sock, msg) {
       }
 
       // --- Caso 2: el usuario escribió "listo" ---
-      if (textoLower === 'listo') {
+      if (textoLower === "listo") {
         cancelarRecordatorio(token);
         if (fotos.length === 0) {
           await sock.sendMessage(remitente, {
@@ -468,7 +533,9 @@ async function manejarMensaje(sock, msg) {
 
         const resultado = await apiPost(`/api/sesiones/${token}/finalizar`);
         if (!resultado.ok) {
-          await sock.sendMessage(remitente, { text: 'Hubo un error al guardar tu reclamo.' });
+          await sock.sendMessage(remitente, {
+            text: "Hubo un error al guardar tu reclamo.",
+          });
           return;
         }
         await sock.sendMessage(remitente, {
@@ -478,11 +545,13 @@ async function manejarMensaje(sock, msg) {
       }
 
       // --- Caso 3: el usuario escribió "saltar" ---
-      if (textoLower === 'saltar' || textoLower === 'no') {
+      if (textoLower === "saltar" || textoLower === "no") {
         cancelarRecordatorio(token);
         const resultado = await apiPost(`/api/sesiones/${token}/finalizar`);
         if (!resultado.ok) {
-          await sock.sendMessage(remitente, { text: 'Hubo un error al guardar tu reclamo.' });
+          await sock.sendMessage(remitente, {
+            text: "Hubo un error al guardar tu reclamo.",
+          });
           return;
         }
         await sock.sendMessage(remitente, {
@@ -493,17 +562,17 @@ async function manejarMensaje(sock, msg) {
 
       // --- Caso 4: cualquier otra cosa ---
       await sock.sendMessage(remitente, {
-
         text: `No entendí. Mandá una foto, escribí "listo" para continuar, o "saltar" para terminar sin fotos.`,
-
       });
       cancelarRecordatorio(token);
       break;
     }
 
     default:
-      console.warn('⚠️ Estado desconocido:', estado);
-      await sock.sendMessage(msg.key.remoteJid, { text: 'Hubo un problema. Escribí "hola" para empezar.' });
+      console.warn("⚠️ Estado desconocido:", estado);
+      await sock.sendMessage(msg.key.remoteJid, {
+        text: 'Hubo un problema. Escribí "hola" para empezar.',
+      });
   }
 }
 
