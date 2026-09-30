@@ -275,6 +275,22 @@ function esAyuda(texto) {
   return ["ayuda", "help", "opciones", "?", "???", "no entiendo"].includes(t);
 }
 
+/**
+ * Extrae los datos de una ubicación de WhatsApp.
+ * Devuelve un objeto { lat, lng, nombre, direccion_mapa } o null si no es locationMessage.
+ */
+function extraerUbicacion(msg) {
+  const loc = msg.message?.locationMessage;
+  if (!loc) return null;
+
+  return {
+    lat: loc.degreesLatitude,
+    lng: loc.degreesLongitude,
+    nombre: loc.name || null,
+    direccion_mapa: loc.address || null,
+  };
+}
+
 // ============================================================
 // Handler principal
 // ============================================================
@@ -421,24 +437,23 @@ async function manejarMensaje(sock, msg) {
 
     case "esperando_direccion": {
       if (!texto) {
-        await sock.sendMessage(remitente, {
+        await sock.sendMessage(msg.key.remoteJid, {
           text: "Escribí una dirección válida.",
         });
         return;
       }
       await apiPost(`/api/sesiones/${token}/avanzar`, {
-        estado: "esperando_nombre", // ← esto cambia a 'esperando_ubicacion'
+        estado: "esperando_ubicacion", // ← esto cambia a 'esperando_ubicacion'
         datos: { direccion: texto },
       });
-      await sock.sendMessage(remitente, { text: TEXTO_NOMBRE }); // ← esto cambia a TEXTO_UBICACION
+      await sock.sendMessage(msg.key.remoteJid, { text: TEXTO_UBICACION });
       break;
     }
 
     case "esperando_ubicacion": {
       const textoLower = texto.toLowerCase();
 
-      // Por ahora solo soportamos "saltar". Las ubicaciones y el resto
-      // se manejan en los pasos 4.2 y 4.3.
+      // Caso 1: el usuario escribió "saltar"
       if (textoLower === "saltar") {
         await apiPost(`/api/sesiones/${token}/avanzar`, {
           estado: "esperando_nombre",
@@ -447,8 +462,22 @@ async function manejarMensaje(sock, msg) {
         return;
       }
 
+      // Caso 2: el usuario compartió una ubicación (pin)
+      const ubicacion = extraerUbicacion(msg);
+      if (ubicacion) {
+        await apiPost(`/api/sesiones/${token}/avanzar`, {
+          estado: "esperando_nombre",
+          datos: { ubicacion },
+        });
+        await sock.sendMessage(msg.key.remoteJid, {
+          text: "📍 Ubicación recibida. ¿Me confirmás tu nombre y apellido?",
+        });
+        return;
+      }
+
+      // Caso 3: cualquier otra cosa
       await sock.sendMessage(msg.key.remoteJid, {
-        text: 'Todavía no procesamos ubicaciones. Escribí "saltar" para continuar.',
+        text: 'No entendí. Compartí tu ubicación (clip 📎 → Ubicación), o escribí "saltar" para continuar.',
       });
       break;
     }
