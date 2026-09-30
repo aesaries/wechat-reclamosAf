@@ -250,6 +250,7 @@ router.post("/:token/finalizar", (req, res) => {
   // Creamos el reclamo
   const detalleJson = JSON.stringify({
     fotos: datos.fotos || [],
+    ubicacion: datos.ubicacion || null,
     comentarios: datos.comentarios || null,
   });
 

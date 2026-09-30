@@ -291,6 +291,13 @@ function extraerUbicacion(msg) {
   };
 }
 
+/**
+ * Detecta si el mensaje es una ubicación en tiempo real (live location).
+ */
+function esUbicacionEnVivo(msg) {
+  return !!msg.message?.liveLocationMessage;
+}
+
 // ============================================================
 // Handler principal
 // ============================================================
@@ -453,6 +460,11 @@ async function manejarMensaje(sock, msg) {
     case "esperando_ubicacion": {
       const textoLower = texto.toLowerCase();
 
+      // Recuperamos los datos temporales actuales
+      const datosActuales = sesionData.datos_temporales
+        ? JSON.parse(sesionData.datos_temporales)
+        : {};
+
       // Caso 1: el usuario escribió "saltar"
       if (textoLower === "saltar") {
         await apiPost(`/api/sesiones/${token}/avanzar`, {
@@ -462,7 +474,22 @@ async function manejarMensaje(sock, msg) {
         return;
       }
 
-      // Caso 2: el usuario compartió una ubicación (pin)
+      // Caso 2: el usuario compartió ubicación en tiempo real (no nos sirve)
+      if (esUbicacionEnVivo(msg)) {
+        // Solo avisamos una vez para no spamear con cada actualización
+        if (!datosActuales.aviso_live_location) {
+          await apiPost(`/api/sesiones/${token}/avanzar`, {
+            estado: "esperando_ubicacion",
+            datos: { aviso_live_location: true },
+          });
+          await sock.sendMessage(msg.key.remoteJid, {
+            text: "Recibí una ubicación en tiempo real, pero para el reclamo necesito una *fija*.\n\nTocá clip 📎 → Ubicación → Enviar mi ubicación actual.",
+          });
+        }
+        return;
+      }
+
+      // Caso 3: el usuario compartió una ubicación fija (pin)
       const ubicacion = extraerUbicacion(msg);
       if (ubicacion) {
         await apiPost(`/api/sesiones/${token}/avanzar`, {
@@ -475,7 +502,7 @@ async function manejarMensaje(sock, msg) {
         return;
       }
 
-      // Caso 3: cualquier otra cosa
+      // Caso 4: cualquier otra cosa
       await sock.sendMessage(msg.key.remoteJid, {
         text: 'No entendí. Compartí tu ubicación (clip 📎 → Ubicación), o escribí "saltar" para continuar.',
       });
