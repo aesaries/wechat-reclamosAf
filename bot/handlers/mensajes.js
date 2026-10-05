@@ -190,7 +190,7 @@ function esFoto(msg) {
  */
 function detectarMensajeNoSoportado(msg) {
   const m = msg.message;
-  if (!m) return null;
+  if (!m) return "ignorar";
 
   // Ignorar silenciosamente estos (no merecen respuesta)
   if (m.reactionMessage) return "ignorar";
@@ -203,6 +203,16 @@ function detectarMensajeNoSoportado(msg) {
   if (m.stickerMessage) return "sticker";
   if (m.contactMessage || m.contactsArrayMessage) return "contacto";
   if (m.pollCreationMessage || m.pollCreationMessageV3) return "encuesta";
+
+  // Detectar si NO tiene contenido útil (ignorar silenciosamente)
+  const tieneContenidoUtil =
+    m.conversation ||
+    m.extendedTextMessage ||
+    m.imageMessage ||
+    m.locationMessage ||
+    m.liveLocationMessage;
+
+  if (!tieneContenidoUtil) return "ignorar";
 
   return null;
 }
