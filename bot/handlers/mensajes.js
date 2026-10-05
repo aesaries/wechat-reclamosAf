@@ -248,7 +248,7 @@ function programarRecordatorio(sock, remitente, token) {
 
   const timer = setTimeout(async () => {
     try {
-      await sock.sendMessage(remitente, {
+      await sock.sendMessage(msg.key.remoteJid, {
         text: `¿Terminaste? Escribí "listo" para continuar o "saltar" para finalizar sin más fotos.`,
       });
       console.log(`⏰ Recordatorio enviado a ${token.slice(0, 8)}...`);
@@ -547,7 +547,7 @@ async function manejarMensaje(sock, msg) {
       // --- Caso 1: llegó una foto ---
       if (esMensajeFoto) {
         if (fotos.length >= MAX_FOTOS) {
-          await sock.sendMessage(remitente, {
+          await sock.sendMessage(msg.key.remoteJid, {
             text: `Ya recibimos el máximo de ${MAX_FOTOS} fotos. Escribí "listo" para continuar.`,
           });
           return;
@@ -575,11 +575,11 @@ async function manejarMensaje(sock, msg) {
 
         const restantes = MAX_FOTOS - fotos.length;
         if (restantes > 0) {
-          await sock.sendMessage(remitente, {
+          await sock.sendMessage(msg.key.remoteJid, {
             text: `📸 Foto recibida (${fotos.length}/${MAX_FOTOS}). Podés mandar ${restantes} más o escribir "listo" para continuar.`,
           });
         } else {
-          await sock.sendMessage(remitente, {
+          await sock.sendMessage(msg.key.remoteJid, {
             text: `📸 Foto recibida (${fotos.length}/${MAX_FOTOS}). Escribí "listo" para continuar.`,
           });
         }
@@ -591,7 +591,7 @@ async function manejarMensaje(sock, msg) {
       if (textoLower === "listo") {
         cancelarRecordatorio(token);
         if (fotos.length === 0) {
-          await sock.sendMessage(remitente, {
+          await sock.sendMessage(msg.key.remoteJid, {
             text: 'Todavía no recibimos ninguna foto. Mandá una o escribí "saltar" para continuar sin fotos.',
           });
           return;
@@ -599,12 +599,12 @@ async function manejarMensaje(sock, msg) {
 
         const resultado = await apiPost(`/api/sesiones/${token}/finalizar`);
         if (!resultado.ok) {
-          await sock.sendMessage(remitente, {
+          await sock.sendMessage(msg.key.remoteJid, {
             text: "Hubo un error al guardar tu reclamo.",
           });
           return;
         }
-        await sock.sendMessage(remitente, {
+        await sock.sendMessage(msg.key.remoteJid, {
           text: `✅ Reclamo #${resultado.reclamo.id} registrado con ${fotos.length} foto(s).\nTe vamos a contactar a la brevedad.`,
         });
         return;
@@ -615,19 +615,19 @@ async function manejarMensaje(sock, msg) {
         cancelarRecordatorio(token);
         const resultado = await apiPost(`/api/sesiones/${token}/finalizar`);
         if (!resultado.ok) {
-          await sock.sendMessage(remitente, {
+          await sock.sendMessage(msg.key.remoteJid, {
             text: "Hubo un error al guardar tu reclamo.",
           });
           return;
         }
-        await sock.sendMessage(remitente, {
+        await sock.sendMessage(msg.key.remoteJid, {
           text: `✅ Reclamo #${resultado.reclamo.id} registrado.\nTe vamos a contactar a la brevedad.`,
         });
         return;
       }
 
       // --- Caso 4: cualquier otra cosa ---
-      await sock.sendMessage(remitente, {
+      await sock.sendMessage(msg.key.remoteJid, {
         text: `No entendí. Mandá una foto, escribí "listo" para continuar, o "saltar" para terminar sin fotos.`,
       });
       cancelarRecordatorio(token);
