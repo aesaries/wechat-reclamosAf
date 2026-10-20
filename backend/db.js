@@ -37,18 +37,24 @@ db.exec(`
   );
 
   CREATE TABLE IF NOT EXISTS reclamos (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    usuario_id INTEGER NOT NULL,
-    sesion_id INTEGER,
-    tipo TEXT NOT NULL,
-    subtipo TEXT,
-    detalle_json TEXT,
-    estado TEXT DEFAULT 'pendiente',
-    creado_en DATETIME DEFAULT CURRENT_TIMESTAMP,
-    actualizado_en DATETIME DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (usuario_id) REFERENCES usuarios(id),
-    FOREIGN KEY (sesion_id) REFERENCES sesiones(id)
-  );
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  numero_reclamo TEXT,
+  usuario_id INTEGER NOT NULL,
+  sesion_id INTEGER,
+  tipo TEXT NOT NULL,
+  subtipo TEXT,
+  detalle_json TEXT,
+  estado TEXT DEFAULT 'pendiente',
+  prioridad TEXT DEFAULT 'normal',
+  tiene_foto INTEGER DEFAULT 0,
+  motivo_sin_foto TEXT,
+  tiene_ubicacion INTEGER DEFAULT 0,
+  motivo_sin_ubicacion TEXT,
+  creado_en DATETIME DEFAULT CURRENT_TIMESTAMP,
+  actualizado_en DATETIME DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (usuario_id) REFERENCES usuarios(id),
+  FOREIGN KEY (sesion_id) REFERENCES sesiones(id)
+);
 
   CREATE TABLE IF NOT EXISTS mensajes (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
