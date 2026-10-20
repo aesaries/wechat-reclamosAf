@@ -30,11 +30,15 @@ Repo: [URL de GitHub]
 
 ### ⏳ Pendiente
 
-- Validación del flujo v1.0 con el CAO.
-- Ajustes según validación.
-- Implementación del nuevo flujo (reemplaza el actual).
-- Bloque 6: exportación a Excel/CSV (API-first).
-- TODO técnico: reemplazar `remitente` por `msg.key.remoteJid` en algunos `sendMessage`.
+Pendiente:
+
+- Implementación del flujo v2.0 en el bot (reemplaza al actual).
+  - Empezar por el menú principal + flujo de reclamo de recolección.
+  - Después sumar el resto de servicios.
+  - Después las consultas.
+  - Después los otros casos.
+- TODO técnico: reemplazar "remitente" por "msg.key.remoteJid" en algunos
+  sendMessage del handler.
 
 ### 🔜 Futuro
 
@@ -61,21 +65,29 @@ Repo: [URL de GitHub]
 - **Números de reclamo**: formato `2026-0001`.
 - **Prioridad alta** para "Situación particular".
 - **API-first** desde el principio.
+- Foto obligatoria (mínimo 1) para reclamos de servicio, con escape ("no puedo").
+- Ubicación GPS obligatoria para reclamos de servicio, con escape ("no puedo").
+- Situación particular: foto y GPS opcionales.
+- Si el usuario usa el escape de ubicación, la dirección se pide con más detalle.
+- Recordatorio de campos obligatorios a los 60 segundos.
+- Los reclamos incompletos se marcan en la DB con tiene_foto / tiene_ubicacion.
+- Palabras clave del escape: "no puedo", "no me deja", "no sé cómo", "no tengo", etc.
 
 ---
 
-## 🎨 FLUJO ACTUAL (v1.0, pendiente validación)
+## FLUJO ACTUAL (v2.0, validado por CAO)
 
-Ver archivo `FLUJO-BOT.md` (o el nombre que le hayas puesto).
+Ver archivo FLUJO-BOT.md.
 
 Resumen:
+
 - Menú principal: 3 opciones (reclamo, consultas, otros casos).
 - Reclamo: 6 servicios, preguntas condicionales, datos mínimos.
-- "Situación particular" para casos atípicos.
-- Consultas informativas.
-- Derivaciones a otros canales.
-
----
+- Foto obligatoria (mínimo 1) para reclamos de servicio, con escape.
+- Ubicación GPS obligatoria para reclamos de servicio, con escape.
+- "Situación particular" para casos atípicos (daños, robos, etc.), sin foto/GPS obligatorios.
+- Consultas informativas (horarios, frecuencias, acondicionamiento).
+- Derivaciones a otros canales (147, 105, Hábitat Ecológico).
 
 ## 📋 TODOs PENDIENTES
 
@@ -98,7 +110,8 @@ Resumen:
 
 ## 🗣️ ÚLTIMA CHARLA (resumen)
 
-**Fecha**: 2026-10-08
+*
+Última actualización: 2026-10-19
 **Temas tratados**:
 - Diseño completo del nuevo flujo del bot (basado en relevamiento del CAO).
 - Decisión de "Situación particular" para casos atípicos.
@@ -128,6 +141,13 @@ Y con eso, la IA retoma el hilo.
 ---
 
 ## 📅 HISTORIAL DE SESIONES
+
+2026-10-19:
+
+- Validación del flujo v1.0 con el CAO.
+- Foto y ubicación GPS pasan a obligatorias para reclamos de servicio (con escape).
+- Situación particular: foto y GPS opcionales.
+- Actualización de FLUJO-BOT.md a v2.0.
 
 ### 2026-10-08
 - Diseño del flujo v1.0.

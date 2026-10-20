@@ -1,29 +1,32 @@
+FLUJO DEL BOT — AGROTÉCNICA FUEGUINA
 
-FLUJO DEL BOT ¡ª AGROT¨¦CNICA FUEGUINA
+Versión: 2.0 (validado por CAO)
+Fecha: 2026-10-19
+Estado: Listo para implementación
 
-Versi¨®n: 1.0 (borrador para validaci¨®n con CAO)
-Fecha: 2026-10-07
 OBJETIVO
 
-Reemplazar el flujo actual de "mensaje autom¨¢tico + formulario web + operador" por una conversaci¨®n ¨²nica por WhatsApp, guiada por un bot, que registre reclamos, consultas y casos especiales de manera estructurada.
+Reemplazar el flujo actual de "mensaje automático + formulario web + operador" por una conversación única por WhatsApp, guiada por un bot, que registre reclamos, consultas y casos especiales de manera estructurada.
 
-Principios de dise?o:
+Principios de diseño:
 
-    El bot registra, no rechaza. El CAO decide despu¨¦s.
+    El bot registra, no rechaza. El CAO decide después.
 
-    M¨ªnima fricci¨®n para el usuario.
+    Mínima fricción para el usuario.
 
     24/7, sin depender del horario del CAO.
 
     No alarmar al usuario con advertencias legales.
 
-    Datos m¨ªnimos para que el CAO pueda gestionar.
+    Datos mínimos para que el CAO pueda gestionar.
 
-ITEM 1 ¡ª BIENVENIDA
+    Los campos obligatorios tienen escape: si el usuario no puede, se registra igual con una marca.
 
-?Hola! ?? Soy el asistente virtual de Agrot¨¦cnica Fueguina.
+ITEM 1 — BIENVENIDA
 
-?En qu¨¦ puedo ayudarte?
+¡Hola! ?? Soy el asistente virtual de Agrotécnica Fueguina.
+
+¿En qué puedo ayudarte?
 
     Hacer un reclamo
 
@@ -31,13 +34,13 @@ ITEM 1 ¡ª BIENVENIDA
 
     Otros casos
 
-OPCI¨®N 1 ¡ª HACER UN RECLAMO
+OPCIÓN 1 — HACER UN RECLAMO
 
-Paso 1 ¡ª Servicio:
+Paso 1 — Servicio:
 
-?Sobre qu¨¦ servicio?
+¿Sobre qué servicio?
 
-    Recolecci¨®n de residuos
+    Recolección de residuos
 
     Barrido
 
@@ -47,128 +50,181 @@ Paso 1 ¡ª Servicio:
 
     Microbasurales
 
-    Situaci¨®n particular
+    Situación particular
 
-Paso 2 ¡ª Preguntas espec¨ªficas seg¨²n servicio:
+Paso 2 — Preguntas específicas según servicio:
 
 Si es Poda (3) o Escombros (4):
 
-?Est¨¢ acondicionado seg¨²n las reglas?
-(m¨¢ximo 1 m3, atado o embolsado)
+¿Está acondicionado según las reglas?
+(máximo 1 m³, atado o embolsado)
 
-    S¨ª, est¨¢ acondicionado
+    Sí, está acondicionado
 
-    No est¨¢ acondicionado
+    No está acondicionado
 
 Luego:
 
-?Cu¨¢nto volumen estim¨¢s?
+¿Cuánto volumen estimás?
 
-    Menos de 1 m3 (menos de 4 bolsas)
+    Menos de 1 m³ (menos de 4 bolsas)
 
-    Aproximadamente 1 m3 (4 bolsas)
+    Aproximadamente 1 m³ (4 bolsas)
 
-    M¨¢s de 1 m3
+    Más de 1 m³
 
-Si es Situaci¨®n particular (6):
+Si es Situación particular (6):
 
-Entiendo. Contame brevemente qu¨¦ pas¨®.
+Entiendo. Contame brevemente qué pasó.
 
-[Texto libre, m¨ªnimo 30 caracteres, m¨¢ximo 1000]
+[Texto libre, mínimo 30 caracteres, máximo 1000]
 
-Paso 3 ¡ª Cu¨¢ndo ocurri¨®:
+Paso 3 — Cuándo ocurrió:
 
-?Cu¨¢ndo ocurri¨®?
+¿Cuándo ocurrió?
 
     Hoy
 
     Ayer
 
-    Hace 2 d¨ªas
+    Hace 2 días
 
-    Hace m¨¢s de 2 d¨ªas
+    Hace más de 2 días
 
-Paso 4 ¡ª Barrio:
+Paso 4 — Barrio:
 
-?Cu¨¢l es tu barrio?
+¿Cuál es tu barrio?
 
-Paso 5 ¡ª Direcci¨®n:
+Paso 5 — Dirección:
 
-?Cu¨¢l es la direcci¨®n? (calle, n¨²mero)
+Para reclamos de servicio (1 a 5):
 
-Paso 6 ¡ª Ubicaci¨®n GPS (opcional):
+¿Cuál es la dirección? (calle, número)
 
-?Quer¨¦s compartir tu ubicaci¨®n GPS? (opcional)
+Si el usuario usó el escape de ubicación, se pide más detalle:
 
-Toc¨¢ clip ?? ¡ú Ubicaci¨®n ¡ú Enviar mi ubicaci¨®n actual.
-Pod¨¦s mover el pin en el mapa para marcar el punto exacto.
+¿Cuál es la dirección? Necesito el mayor detalle posible para que el chofer encuentre el lugar:
 
-Si no quer¨¦s compartirla, escrib¨ª "saltar".
+• Calle y número
+• Entre calles
+• Referencia (ej: "frente a la plaza", "al lado del kiosco")
 
-Paso 7 ¡ª Fotos (opcional):
+Para Situación particular (6):
 
-Si es un reclamo normal (1 a 5):
+¿Cuál es la dirección? (calle, número)
 
-?Quer¨¦s agregar fotos? (opcional, hasta 3)
+Paso 6 — Ubicación GPS:
 
-?? Envi¨¢ las fotos o escrib¨ª "listo" para continuar.
-Si no quer¨¦s agregar ninguna, escrib¨ª "saltar".
+Para reclamos de servicio (1 a 5): obligatorio, con escape.
 
-Si es Situaci¨®n particular (6):
+?? Necesito tu ubicación GPS para que el chofer pueda encontrar el lugar.
 
-?Ten¨¦s fotos o videos del hecho? (opcional, hasta 3 archivos)
+Tocá clip ?? ? Ubicación ? Enviar mi ubicación actual.
+Podés mover el pin en el mapa para marcar el punto exacto.
 
-?? Envi¨¢ los archivos o escrib¨ª "listo" para continuar.
-Si no quer¨¦s agregar ninguno, escrib¨ª "saltar".
+Si no podés compartirla, escribí "no puedo".
+
+Si el usuario escribe "no puedo" u otra variante:
+
+Entiendo que no podés compartir la ubicación. El reclamo se va a registrar solo con la dirección escrita.
+
+?? Importante: sin la ubicación GPS, el chofer puede tener más dificultades para encontrar el lugar exacto.
+
+¿Querés continuar sin ubicación?
+
+    Sí, continuar
+
+    No, prefiero intentar de nuevo
+
+Si elige 1: avanza al paso de dirección con más detalle.
+
+Para Situación particular (6): opcional.
+
+¿Querés compartir tu ubicación GPS? (opcional)
+
+Tocá clip ?? ? Ubicación ? Enviar mi ubicación actual.
+
+Si no querés compartirla, escribí "saltar".
+
+Paso 7 — Fotos:
+
+Para reclamos de servicio (1 a 5): obligatorio (mínimo 1), con escape.
+
+?? Necesito al menos una foto del problema para poder registrar el reclamo.
+Máximo 3 fotos.
+Cuando termines, escribí "listo".
+
+Si no podés mandar fotos, escribí "no puedo".
+
+Si el usuario escribe "no puedo" u otra variante:
+
+Entiendo que no podés mandar la foto. El reclamo se va a registrar como "sin foto".
+
+?? Importante: los reclamos sin foto pueden demorar más en procesarse, ya que el equipo tiene que verificar la situación en el lugar.
+
+¿Querés continuar sin foto?
+
+    Sí, continuar
+
+    No, prefiero intentar de nuevo
+
+Si elige 1: avanza con sin_foto: true.
+
+Para Situación particular (6): opcional.
+
+¿Tenés fotos o videos del hecho? (opcional, hasta 3 archivos)
+
+?? Enviá los archivos o escribí "listo" para continuar.
+Si no querés agregar ninguno, escribí "saltar".
 
 Nota: los videos son de mucha ayuda como respaldo.
 
-Paso 8 ¡ª Nombre:
+Paso 8 — Nombre:
 
-?Me confirm¨¢s tu nombre y apellido?
+¿Me confirmás tu nombre y apellido?
 
-Paso 9 ¡ª Comentarios extra (opcional):
+Paso 9 — Comentarios extra (opcional):
 
-?Alg¨²n comentario extra? (opcional)
+¿Algún comentario extra? (opcional)
 
-Escrib¨ª "saltar" si no quer¨¦s agregar nada.
+Escribí "saltar" si no querés agregar nada.
 
-Paso 10 ¡ª T¨¦rminos y condiciones:
+Paso 10 — Términos y condiciones:
 
 Si es un reclamo normal (1 a 5):
 
-Antes de enviar, ten¨¦ en cuenta:
+Antes de enviar, tené en cuenta:
 
-? Plazo: 48 hs desde el hecho.
-? Respuesta: hasta 15 d¨ªas h¨¢biles.
-? Datos confidenciales.
+• Plazo: 48 hs desde el hecho.
+• Respuesta: hasta 15 días hábiles.
+• Datos confidenciales.
 
-Acept¨¢s los t¨¦rminos completos:
+Aceptás los términos completos:
 https://af-salta.com.ar/terminos
 
-?Confirm¨¢s el env¨ªo?
+¿Confirmás el envío?
 
-    S¨ª, enviar
-
-    No, cancelar
-
-Si es Situaci¨®n particular (6):
-
-Al enviar esta solicitud, acept¨¢s los siguientes t¨¦rminos:
-
-? La empresa evaluar¨¢ el caso con prioridad y se comunicar¨¢ a la brevedad.
-? La informaci¨®n ser¨¢ tratada de manera confidencial.
-? La empresa se reserva el derecho de aceptar o rechazar la solicitud.
-? Plazo de respuesta: hasta 15 d¨ªas h¨¢biles.
-? Jurisdicci¨®n: tribunales de la ciudad de Salta, Argentina.
-
-?Acept¨¢s estos t¨¦rminos y quer¨¦s enviar el reclamo?
-
-    S¨ª, enviar
+    Sí, enviar
 
     No, cancelar
 
-Paso 11 ¡ª Confirmaci¨®n:
+Si es Situación particular (6):
+
+Al enviar esta solicitud, aceptás los siguientes términos:
+
+• La empresa evaluará el caso con prioridad y se comunicará a la brevedad.
+• La información será tratada de manera confidencial.
+• La empresa se reserva el derecho de aceptar o rechazar la solicitud.
+• Plazo de respuesta: hasta 15 días hábiles.
+• Jurisdicción: tribunales de la ciudad de Salta, Argentina.
+
+¿Aceptás estos términos y querés enviar el reclamo?
+
+    Sí, enviar
+
+    No, cancelar
+
+Paso 11 — Confirmación:
 
 Si es un reclamo normal:
 
@@ -176,31 +232,31 @@ Si es un reclamo normal:
 
 Servicio: [servicio]
 Barrio: [barrio]
-Direcci¨®n: [direcci¨®n]
+Dirección: [dirección]
 
 Te vamos a contactar a la brevedad.
 
-Guard¨¢ tu n¨²mero de reclamo para futuras consultas.
+Guardá tu número de reclamo para futuras consultas.
 
-Si es Situaci¨®n particular:
+Si es Situación particular:
 
 ? Reclamo #2026-0043 registrado.
 
-Tipo: Situaci¨®n particular
+Tipo: Situación particular
 Barrio: [barrio]
 
 Por la naturaleza de tu caso, un responsable va a revisarlo con prioridad.
 Te van a contactar a la brevedad.
 
-Guard¨¢ tu n¨²mero de reclamo.
+Guardá tu número de reclamo.
 
-OPCI¨®N 2 ¡ª CONSULTAR HORARIOS O FRECUENCIAS
+OPCIÓN 2 — CONSULTAR HORARIOS O FRECUENCIAS
 
-Paso 1 ¡ª Servicio:
+Paso 1 — Servicio:
 
-?Sobre qu¨¦ servicio quer¨¦s consultar?
+¿Sobre qué servicio querés consultar?
 
-    Recolecci¨®n
+    Recolección
 
     Barrido
 
@@ -208,16 +264,16 @@ Paso 1 ¡ª Servicio:
 
     Escombros
 
-Paso 2 ¡ª Respuesta seg¨²n servicio:
+Paso 2 — Respuesta según servicio:
 
-Recolecci¨®n:
+Recolección:
 
-??? Horarios de recolecci¨®n:
+??? Horarios de recolección:
 
-Turno matutino: a partir de las 6 AM, de lunes a s¨¢bado.
+Turno matutino: a partir de las 6 AM, de lunes a sábado.
 Turno nocturno: a partir de las 21 hs, de domingo a viernes.
 
-Record¨¢ dejar los residuos correctamente acondicionados.
+Recordá dejar los residuos correctamente acondicionados.
 
 Barrido:
 
@@ -225,85 +281,85 @@ Barrido:
 
 El servicio se realiza 2 veces por semana en tu zona.
 
-Si not¨¢s que no se est¨¢ cumpliendo, pod¨¦s hacer un reclamo desde el men¨² principal.
+Si notás que no se está cumpliendo, podés hacer un reclamo desde el menú principal.
 
 Poda:
 
 ?? Poda acondicionada:
 
-? M¨¢ximo 1 m3 (equivalente a 4 bolsas medianas de consorcio).
-? Debe estar atada o embolsada.
-? Se retira en el mismo horario que la recolecci¨®n normal de tu barrio.
+• Máximo 1 m³ (equivalente a 4 bolsas medianas de consorcio).
+• Debe estar atada o embolsada.
+• Se retira en el mismo horario que la recolección normal de tu barrio.
 
-Si est¨¢ acondicionada y no la retiran, pod¨¦s hacer un reclamo.
+Si está acondicionada y no la retiran, podés hacer un reclamo.
 
 Escombros:
 
 ?? Escombros acondicionados:
 
-? M¨¢ximo 1 m3 (equivalente a 4 bolsas medianas de consorcio).
-? En bolsas livianas (no muy pesadas).
-? Se retiran en el mismo horario que la recolecci¨®n normal de tu barrio.
+• Máximo 1 m³ (equivalente a 4 bolsas medianas de consorcio).
+• En bolsas livianas (no muy pesadas).
+• Se retiran en el mismo horario que la recolección normal de tu barrio.
 
-Si est¨¢n acondicionados y no los retiran, pod¨¦s hacer un reclamo.
+Si están acondicionados y no los retiran, podés hacer un reclamo.
 
-Paso 3 ¡ª Cierre:
+Paso 3 — Cierre:
 
-?Necesit¨¢s algo m¨¢s?
+¿Necesitás algo más?
 
-    S¨ª, volver al men¨²
+    Sí, volver al menú
 
     No, gracias
 
-OPCI¨®N 3 ¡ª OTROS CASOS
+OPCIÓN 3 — OTROS CASOS
 
-Paso 1 ¡ª Caso:
+Paso 1 — Caso:
 
-?Cu¨¢l de estos casos es?
+¿Cuál de estos casos es?
 
     Animales muertos
 
-    Poda de ¨¢rboles (no de residuos)
+    Poda de árboles (no de residuos)
 
-    Residuos peligrosos o patol¨®gicos
+    Residuos peligrosos o patológicos
 
-    Limpieza de terrenos / v¨ªas / canales
+    Limpieza de terrenos / vías / canales
 
-    Caso fuera de nuestra ¨¢rea
+    Caso fuera de nuestra área
 
     Otro caso especial
 
-Paso 2 ¡ª Respuesta seg¨²n caso:
+Paso 2 — Respuesta según caso:
 
 Animales muertos:
 
 ?? Para animales muertos, comunicate con el 147 de la Municipalidad de Salta.
 
-Poda de ¨¢rboles:
+Poda de árboles:
 
-?? Para poda de ¨¢rboles (no residuos de poda), comunicate con el 105 de la Municipalidad de Salta.
+?? Para poda de árboles (no residuos de poda), comunicate con el 105 de la Municipalidad de Salta.
 
-Residuos peligrosos o patol¨®gicos:
+Residuos peligrosos o patológicos:
 
-?? Para residuos peligrosos (pilas, t¨®ners, aceites) o patol¨®gicos, comunicate con H¨¢bitat Ecol¨®gico: 4283490.
+?? Para residuos peligrosos (pilas, tóners, aceites) o patológicos, comunicate con Hábitat Ecológico: 4283490.
 
-Limpieza de terrenos / v¨ªas / canales:
+Limpieza de terrenos / vías / canales:
 
-Para limpieza de terrenos bald¨ªos, v¨ªas del ferrocarril o canales que no nos corresponden, comunicate con el 147 de la Municipalidad de Salta.
+Para limpieza de terrenos baldíos, vías del ferrocarril o canales que no nos corresponden, comunicate con el 147 de la Municipalidad de Salta.
 
-Caso fuera de nuestra ¨¢rea:
+Caso fuera de nuestra área:
 
-Ese caso corresponde a otra jurisdicci¨®n. Por favor, comunicate con la Municipalidad de tu localidad.
+Ese caso corresponde a otra jurisdicción. Por favor, comunicate con la Municipalidad de tu localidad.
 
 Otro caso especial:
 
-Para casos especiales no contemplados, comunicate con el 147 de la Municipalidad de Salta, o llamanos al [tel¨¦fono del CAO] en horario de 8 a 16 hs.
+Para casos especiales no contemplados, comunicate con el 147 de la Municipalidad de Salta, o llamanos al [teléfono del CAO] en horario de 8 a 16 hs.
 
-Paso 3 ¡ª Cierre:
+Paso 3 — Cierre:
 
-?Necesit¨¢s algo m¨¢s?
+¿Necesitás algo más?
 
-    S¨ª, volver al men¨²
+    Sí, volver al menú
 
     No, gracias
 
@@ -311,37 +367,67 @@ COMANDOS GLOBALES
 
 Disponibles en cualquier momento del flujo:
 
-    "hola" o cualquier saludo ¡ú volver al men¨² principal.
+    "hola" o cualquier saludo ? volver al menú principal.
 
-    "cancelar" ¡ú cancelar la operaci¨®n actual.
+    "cancelar" ? cancelar la operación actual.
 
-    "ayuda" ¡ú mostrar el men¨² principal.
+    "ayuda" ? mostrar el menú principal.
 
 MANEJO DE CASOS ESPECIALES
 
 Mensajes no soportados:
 
-    Audio: "Por ahora no puedo escuchar audios. ?Me lo escrib¨ªs por texto? Gracias."
+    Audio: "Por ahora no puedo escuchar audios. ¿Me lo escribís por texto? Gracias."
 
-    Video: "Por ahora no puedo ver videos. ?Me lo cont¨¢s por texto? Gracias."
+    Video: "Por ahora no puedo ver videos. ¿Me lo contás por texto? Gracias."
 
-    Documento: "Por ahora no puedo abrir documentos. ?Me lo escrib¨ªs por texto? Gracias."
+    Documento: "Por ahora no puedo abrir documentos. ¿Me lo escribís por texto? Gracias."
 
-    Sticker: "No puedo procesar stickers. ?Me lo escrib¨ªs por texto? Gracias."
+    Sticker: "No puedo procesar stickers. ¿Me lo escribís por texto? Gracias."
 
-    Contacto: "Por ahora no puedo procesar contactos. ?Me lo escrib¨ªs por texto? Gracias."
+    Contacto: "Por ahora no puedo procesar contactos. ¿Me lo escribís por texto? Gracias."
 
-    Encuesta: "No puedo procesar encuestas. ?Me lo escrib¨ªs por texto? Gracias."
+    Encuesta: "No puedo procesar encuestas. ¿Me lo escribís por texto? Gracias."
 
 Timeout de inactividad:
 
-Si pasan 15 minutos sin actividad del usuario, el flujo se resetea al men¨² principal (silencioso, sin aviso).
+Si pasan 15 minutos sin actividad del usuario, el flujo se resetea al menú principal (silencioso, sin aviso).
 
 Recordatorio de fotos:
 
-Si el usuario mand¨® al menos una foto y pasan 30 segundos sin actividad, el bot env¨ªa:
+Si el usuario mandó al menos una foto y pasan 30 segundos sin actividad, el bot envía:
 
-?Terminaste? Escrib¨ª "listo" para continuar o "saltar" para finalizar sin m¨¢s fotos.
+¿Terminaste? Escribí "listo" para continuar o "saltar" para finalizar sin más fotos.
+
+Recordatorio de campos obligatorios (foto o ubicación):
+
+Si pasan 60 segundos sin actividad en los pasos de foto o ubicación (reclamos de servicio), el bot envía:
+
+¿Necesitás ayuda? Si no podés mandar [foto/ubicación], escribí "no puedo" y seguimos.
+
+Escapes de campos obligatorios:
+
+Palabras clave que activan el escape:
+
+    "no puedo"
+
+    "no me deja"
+
+    "no sé cómo"
+
+    "no tengo"
+
+    "no se puede"
+
+    "no funciona"
+
+    "sin foto" (para fotos)
+
+    "sin ubicación" (para ubicación)
+
+Confirmación del escape:
+
+    Acepta: "sí", "dale", "ok", "1".
 
 DATOS QUE SE GUARDAN POR RECLAMO
 
@@ -356,14 +442,40 @@ ubicacion: {lat, lng, nombre, direccion_mapa} o null
 fotos: Array de rutas o []
 nombre: Texto libre
 comentarios: Texto libre o null
-descripcion_libre: Solo para Situaci¨®n particular
+descripcion_libre: Solo para Situación particular
 acepto_terminos: true
 fecha_aceptacion: Fecha y hora
-prioridad: normal / alta (alta solo para Situaci¨®n particular)
+prioridad: normal / alta (alta solo para Situación particular)
 estado: pendiente / en_proceso / resuelto / cancelado
+tiene_foto: true / false (solo reclamos de servicio)
+motivo_sin_foto: Texto libre o null
+tiene_ubicacion: true / false (solo reclamos de servicio)
+motivo_sin_ubicacion: Texto libre o null
 
+Nota: para Situación particular, tiene_foto y tiene_ubicacion son siempre false (no aplica obligatoriedad).
 
+NOTAS PARA VALIDACIÓN CON EL CAO
 
-v1.0 (2026-10-07): Borrador inicial para validaci¨®n.
+Cuando se valide este flujo con atención al público, prestar atención a:
+
+    Textos de las respuestas. ¿El tono es correcto? ¿Falta algún dato?
+
+    Orden de las preguntas. ¿Es lógico para el usuario?
+
+    Números de teléfono. Verificar que estén actualizados.
+
+    Nombre "Situación particular". ¿Les sirve? ¿Prefieren otro?
+
+    Resumen final. ¿Les alcanza con servicio/barrio/dirección?
+
+    Términos de Situación particular. Deben pasar por el abogado.
+
+    Frecuencia de barrido (2 veces por semana). ¿Es siempre así o varía por zona?
+
+HISTORIAL DE CAMBIOS
+
+v2.0 (2026-10-19): Validado por CAO. Foto y ubicación GPS obligatorias para reclamos de servicio (con escape). Situación particular: ambos opcionales. Agregados campos tiene_foto, motivo_sin_foto, tiene_ubicacion, motivo_sin_ubicacion. Recordatorio de campos obligatorios a los 60 segundos.
+
+v1.0 (2026-10-07): Borrador inicial para validación.
 
 FIN DEL FLUJO
