@@ -1,5 +1,8 @@
 // bot/handlers/menu.js
 const { apiPost } = require("./compartido/api");
+const { TEXTO_SERVICIO } = require("./reclamo");
+const { TEXTO_CONSULTA_SERVICIO } = require("./consultas");
+const { TEXTO_OTROS_CASO } = require("./otrosCasos");
 
 // ============================================================
 // TEXTOS
@@ -50,20 +53,29 @@ async function manejarMenu(sock, msg, token, estado, texto) {
   const opcion = texto.trim();
 
   if (opcion === "1") {
-    // TODO: derivar a reclamo.js
-    await sock.sendMessage(jid, { text: TEXTO_PROXIMAMENTE });
+    await apiPost(`/api/sesiones/${token}/avanzar`, {
+      estado: "esperando_reclamo_servicio",
+      datos: {},
+    });
+    await sock.sendMessage(jid, { text: TEXTO_SERVICIO });
     return;
   }
 
   if (opcion === "2") {
-    // TODO: derivar a consultas.js
-    await sock.sendMessage(jid, { text: TEXTO_PROXIMAMENTE });
+    await apiPost(`/api/sesiones/${token}/avanzar`, {
+      estado: "esperando_consulta_servicio",
+      datos: {},
+    });
+    await sock.sendMessage(jid, { text: TEXTO_CONSULTA_SERVICIO });
     return;
   }
 
   if (opcion === "3") {
-    // TODO: derivar a otrosCasos.js
-    await sock.sendMessage(jid, { text: TEXTO_PROXIMAMENTE });
+    await apiPost(`/api/sesiones/${token}/avanzar`, {
+      estado: "esperando_otros_caso",
+      datos: {},
+    });
+    await sock.sendMessage(jid, { text: TEXTO_OTROS_CASO });
     return;
   }
 
